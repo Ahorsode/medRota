@@ -23,6 +23,17 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (user && request.nextUrl.pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   return response;
 }

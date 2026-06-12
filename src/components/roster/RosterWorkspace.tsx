@@ -11,7 +11,7 @@ import { getMonthDays, monthNames } from "@/lib/utils/dates";
 import { monthlyShiftTotals } from "@/lib/utils/shifts";
 
 export function RosterWorkspace({
-  roster,
+  roster: initialRoster,
   department,
   initialEntries,
   staff,
@@ -24,6 +24,7 @@ export function RosterWorkspace({
   shiftConfigurations: ShiftConfiguration[];
 }) {
   const [entries, setEntries] = useState(initialEntries);
+  const [roster, setRoster] = useState(initialRoster);
   const departmentStaff = staff.filter((person) => person.department_id === department.id);
   const totals = useMemo(() => monthlyShiftTotals(entries), [entries]);
   const days = getMonthDays(roster.year, roster.month);
@@ -58,7 +59,19 @@ export function RosterWorkspace({
             {departmentStaff.length} staff · {days.length} days · inline editing enabled
           </p>
         </div>
-        <RosterToolbar roster={roster} department={department} staff={staff} entries={entries} />
+        <RosterToolbar
+          roster={roster}
+          department={department}
+          staff={staff}
+          entries={entries}
+          onStatusChange={(status) =>
+            setRoster((current) => ({
+              ...current,
+              status,
+              published_at: status === "published" ? new Date().toISOString() : current.published_at,
+            }))
+          }
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_260px]">

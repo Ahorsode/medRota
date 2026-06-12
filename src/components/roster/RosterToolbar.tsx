@@ -1,9 +1,9 @@
 "use client";
 
-import { Download, FileSpreadsheet, Printer, RotateCcw, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Printer, RotateCcw, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { Department, Roster, RosterEntry, Staff } from "@/lib/types";
+import type { Department, Roster, RosterEntry, RosterStatus, Staff } from "@/lib/types";
 import { exportRosterToExcel, exportRosterToPdf } from "@/lib/utils/export";
 
 export function RosterToolbar({
@@ -11,12 +11,31 @@ export function RosterToolbar({
   department,
   staff,
   entries,
+  onStatusChange,
 }: {
   roster: Roster;
   department: Department;
   staff: Staff[];
   entries: RosterEntry[];
+  onStatusChange: (status: RosterStatus) => void;
 }) {
+  function nextStatus() {
+    const transitions: Partial<Record<RosterStatus, RosterStatus>> = {
+      draft: "submitted",
+      submitted: "approved",
+      approved: "published",
+    };
+
+    return transitions[roster.status];
+  }
+
+  const targetStatus = nextStatus();
+  const workflowLabel: Partial<Record<RosterStatus, string>> = {
+    submitted: "Submit for Approval",
+    approved: "Approve",
+    published: "Publish",
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button size="sm" variant="outline" onClick={() => toast.success("Auto-generation preview applied")}>
@@ -35,14 +54,19 @@ export function RosterToolbar({
         <FileSpreadsheet className="h-4 w-4" />
         Export Excel
       </Button>
-      <Button size="sm" onClick={() => toast.success("Roster submitted for approval")}>
-        <Send className="h-4 w-4" />
-        Submit
-      </Button>
-      <Button size="sm" variant="navy" onClick={() => toast.success("Published roster notifications queued")}>
-        <Download className="h-4 w-4" />
-        Publish
-      </Button>
+      {targetStatus ? (
+        <Button
+          size="sm"
+          variant={targetStatus === "published" ? "navy" : "default"}
+          onClick={() => {
+            onStatusChange(targetStatus);
+            toast.success(`Roster marked ${targetStatus}`);
+          }}
+        >
+          {targetStatus === "published" ? <Download className="h-4 w-4" /> : targetStatus === "approved" ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+          {workflowLabel[targetStatus]}
+        </Button>
+      ) : null}
     </div>
   );
 }
