@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -7,9 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { rosterEntries, shiftSwaps, staff } from "@/lib/data/mock";
+import { rosterEntries, shiftSwaps as initialShiftSwaps, staff } from "@/lib/data/mock";
+import type { SwapStatus } from "@/lib/types";
 
 export default function SwapsPage() {
+  const [shiftSwaps, setShiftSwaps] = useState(initialShiftSwaps);
+
+  function handleStatusChange(id: string, status: SwapStatus) {
+    setShiftSwaps((current) => current.map((swap) => (swap.id === id ? { ...swap, status } : swap)));
+  }
+
   return (
     <div>
       <PageHeader title="Shift Swap Management" description="Validate qualification, hours, and rest period issues before approval." />
@@ -47,10 +55,31 @@ export default function SwapsPage() {
                           <Badge variant="danger"><XCircle className="mr-1 h-3 w-3" />Rest period</Badge>
                         </div>
                       </TableCell>
-                      <TableCell><Badge variant="warning">{swap.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={swap.status === "approved" ? "success" : swap.status === "rejected" ? "danger" : "warning"}>
+                          {swap.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="space-x-2 text-right">
-                        <Button size="sm" onClick={() => toast.success("Swap approved")}>Approve</Button>
-                        <Button size="sm" variant="outline" onClick={() => toast.error("Swap rejected")}>Reject</Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            handleStatusChange(swap.id, "approved");
+                            toast.success("Swap approved");
+                          }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            handleStatusChange(swap.id, "rejected");
+                            toast.error("Swap rejected");
+                          }}
+                        >
+                          Reject
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );

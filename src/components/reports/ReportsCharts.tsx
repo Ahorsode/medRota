@@ -4,30 +4,40 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const staffing = [
-  { department: "OPD", Morning: 42, Afternoon: 30, Night: 28 },
-  { department: "Security", Morning: 31, Afternoon: 0, Night: 29 },
-  { department: "Records", Morning: 36, Afternoon: 18, Night: 0 },
-  { department: "Prescribers", Morning: 24, Afternoon: 16, Night: 10 },
-];
+type StaffingDatum = {
+  department: string;
+  Morning: number;
+  Afternoon: number;
+  Night: number;
+};
 
-const absenteeism = [
-  { month: "Jan", rate: 2.1 },
-  { month: "Feb", rate: 2.4 },
-  { month: "Mar", rate: 1.8 },
-  { month: "Apr", rate: 2.9 },
-  { month: "May", rate: 2.2 },
-  { month: "Jun", rate: 1.7 },
-];
+type LeaveDatum = {
+  name: string;
+  value: number;
+  color?: string;
+};
 
-const leave = [
-  { name: "Annual", value: 46, color: "#7C3AED" },
-  { name: "Study", value: 18, color: "#2E86AB" },
-  { name: "Sick", value: 12, color: "#F59E0B" },
-  { name: "Maternity", value: 8, color: "#10B981" },
-];
+type AbsenteeismDatum = {
+  week: string;
+  leave: number;
+};
 
-export function ReportsCharts() {
+type NightFairnessDatum = {
+  name: string;
+  nights: number;
+};
+
+export function ReportsCharts({
+  staffing,
+  absenteeism,
+  leave,
+  nightFairness,
+}: {
+  staffing: StaffingDatum[];
+  absenteeism: AbsenteeismDatum[];
+  leave: LeaveDatum[];
+  nightFairness: NightFairnessDatum[];
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -71,10 +81,10 @@ export function ReportsCharts() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={absenteeism}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="week" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="rate" stroke="#EF4444" strokeWidth={3} />
+              <Line type="monotone" dataKey="leave" stroke="#EF4444" strokeWidth={3} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -85,7 +95,7 @@ export function ReportsCharts() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={leave} dataKey="value" nameKey="name" outerRadius={100} label>
-                {leave.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                {leave.map((entry) => <Cell key={entry.name} fill={entry.color ?? "#2E86AB"} />)}
               </Pie>
               <Tooltip />
             </PieChart>
@@ -96,7 +106,7 @@ export function ReportsCharts() {
         <CardHeader><CardTitle>Night Shift Fairness</CardTitle></CardHeader>
         <CardContent className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={[{ name: "R. Opoku", nights: 5 }, { name: "A. Amo", nights: 4 }, { name: "Sandra", nights: 6 }, { name: "E. Asante", nights: 5 }]}>
+            <BarChart data={nightFairness}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />

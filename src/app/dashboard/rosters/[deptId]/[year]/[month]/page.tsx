@@ -16,7 +16,21 @@ export default async function RosterEditorPage({
   const numericYear = Number(year);
   const numericMonth = Number(month);
   const department = departments.find((item) => item.id === deptId);
-  const roster = rosters.find((item) => item.department_id === deptId && item.year === numericYear && item.month === numericMonth);
+  const roster =
+    rosters.find((item) => item.department_id === deptId && item.year === numericYear && item.month === numericMonth) ??
+    (department
+      ? {
+          id: `roster-${deptId}-${numericYear}-${numericMonth}`,
+          department_id: deptId,
+          month: numericMonth,
+          year: numericYear,
+          status: "draft" as const,
+          created_by: null,
+          approved_by: null,
+          created_at: new Date().toISOString(),
+          published_at: null,
+        }
+      : null);
 
   if (!department || !roster) notFound();
 

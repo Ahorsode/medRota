@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { departments, rosterEntries, staff } from "@/lib/data/mock";
+import { departments, leaveRequests, rosterEntries, staff } from "@/lib/data/mock";
 import { formatDateLabel } from "@/lib/utils/dates";
 
 export default async function StaffProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,10 +12,11 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
   if (!person) notFound();
   const department = departments.find((item) => item.id === person.department_id);
   const entries = rosterEntries.filter((entry) => entry.staff_id === person.id).slice(0, 18);
+  const leaves = leaveRequests.filter((leave) => leave.staff_id === person.id);
 
   return (
     <div>
-      <PageHeader title={person.full_name} description={`${person.position} · ${department?.name}`} />
+      <PageHeader title={person.full_name} description={`${person.position} · ${department?.name}`} actions={<StaffProfileActions staff={person} />} />
       <div className="grid gap-5 p-5 xl:grid-cols-[0.8fr_1.2fr]">
         <Card>
           <CardHeader><CardTitle>Personal Info</CardTitle></CardHeader>
@@ -35,6 +37,24 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
                 <Badge variant={entry.shift_code === "LEAVE" ? "purple" : "teal"}>{entry.shift_code}</Badge>
               </div>
             ))}
+          </CardContent>
+        </Card>
+        <Card className="xl:col-span-2">
+          <CardHeader><CardTitle>Leave History</CardTitle></CardHeader>
+          <CardContent className="grid gap-2 md:grid-cols-2">
+            {leaves.length > 0 ? (
+              leaves.map((leave) => (
+                <div key={leave.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-950">{leave.leave_type}</p>
+                    <p className="text-xs text-slate-500">{leave.start_date} to {leave.end_date}</p>
+                  </div>
+                  <Badge variant={leave.status === "approved" ? "success" : leave.status === "pending" ? "warning" : "danger"}>{leave.status}</Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No leave history recorded.</p>
+            )}
           </CardContent>
         </Card>
       </div>

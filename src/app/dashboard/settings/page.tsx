@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { departments, hospital, shiftConfigurations } from "@/lib/data/mock";
 
 export default function SettingsPage() {
+  const [hospitalName, setHospitalName] = useState(hospital.name);
+  const [location, setLocation] = useState(hospital.location ?? "");
+
   return (
     <div>
       <PageHeader title="Settings" description="Hospital profile, shifts, holidays, users, and role assignment." />
@@ -13,9 +20,9 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle>Hospital Profile</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <Input defaultValue={hospital.name} />
-            <Input defaultValue={hospital.location ?? ""} />
-            <Button>Save Profile</Button>
+            <Input value={hospitalName} onChange={(event) => setHospitalName(event.target.value)} />
+            <Input value={location} onChange={(event) => setLocation(event.target.value)} />
+            <Button onClick={() => toast.success("Hospital profile saved in local preview")}>Save Profile</Button>
           </CardContent>
         </Card>
         <Card>

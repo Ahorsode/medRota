@@ -42,7 +42,11 @@ export function StaffTable({ staff, departments }: { staff: Staff[]; departments
           <TableBody>
             {filtered.map((person) => (
               <TableRow key={person.id}>
-                <TableCell className="font-bold text-slate-950">{person.full_name}</TableCell>
+                <TableCell className="font-bold text-slate-950">
+                  <Link className="hover:text-[#2E86AB]" href={`/dashboard/staff/${person.id}`}>
+                    {person.full_name}
+                  </Link>
+                </TableCell>
                 <TableCell className="font-mono text-xs">{person.staff_number}</TableCell>
                 <TableCell>{person.rank}</TableCell>
                 <TableCell>{departments.find((department) => department.id === person.department_id)?.name}</TableCell>
@@ -52,7 +56,7 @@ export function StaffTable({ staff, departments }: { staff: Staff[]; departments
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild size="sm" variant="outline">
-                    <Link href={`/dashboard/staff/${person.id}`}>View Profile</Link>
+                    <Link href={`/dashboard/staff/${person.id}`}>View</Link>
                   </Button>
                 </TableCell>
               </TableRow>

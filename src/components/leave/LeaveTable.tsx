@@ -4,9 +4,19 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Department, LeaveRequest, Staff } from "@/lib/types";
+import type { Department, LeaveRequest, LeaveStatus, Staff } from "@/lib/types";
 
-export function LeaveTable({ leaves, staff, departments }: { leaves: LeaveRequest[]; staff: Staff[]; departments: Department[] }) {
+export function LeaveTable({
+  leaves,
+  staff,
+  departments,
+  onStatusChange,
+}: {
+  leaves: LeaveRequest[];
+  staff: Staff[];
+  departments: Department[];
+  onStatusChange: (id: string, status: LeaveStatus) => void;
+}) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <Table>
@@ -36,10 +46,24 @@ export function LeaveTable({ leaves, staff, departments }: { leaves: LeaveReques
                   <Badge variant={leave.status === "approved" ? "success" : leave.status === "pending" ? "warning" : "danger"}>{leave.status}</Badge>
                 </TableCell>
                 <TableCell className="space-x-2 text-right">
-                  <Button size="sm" variant="outline" onClick={() => toast.success("Leave approved")}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      onStatusChange(leave.id, "approved");
+                      toast.success("Leave approved");
+                    }}
+                  >
                     Approve
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => toast.error("Leave rejected")}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      onStatusChange(leave.id, "rejected");
+                      toast.error("Leave rejected");
+                    }}
+                  >
                     Reject
                   </Button>
                 </TableCell>

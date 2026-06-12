@@ -1,12 +1,17 @@
+"use client";
+
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffForm } from "@/components/staff/StaffForm";
 import { StaffTable } from "@/components/staff/StaffTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { departments, staff } from "@/lib/data/mock";
+import { departments, staff as initialStaff } from "@/lib/data/mock";
 
 export default function StaffPage() {
+  const [staff, setStaff] = useState(initialStaff);
+
   return (
     <div>
       <PageHeader title="Staff Management" description="Search, filter, add, edit, and deactivate hospital staff." actions={<Button><Plus className="h-4 w-4" />Add Staff</Button>} />
@@ -16,7 +21,7 @@ export default function StaffPage() {
             <CardTitle>Quick Add</CardTitle>
           </CardHeader>
           <CardContent>
-            <StaffForm />
+            <StaffForm departments={departments} onAdd={(newStaff) => setStaff((current) => [newStaff, ...current])} />
           </CardContent>
         </Card>
         <Card>
