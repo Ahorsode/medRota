@@ -9,6 +9,7 @@ export const shiftOptions: Array<{ code: ShiftCode; label: string }> = [
   { code: "H", label: "Holiday" },
   { code: "%", label: "Off Day" },
   { code: "LEAVE", label: "Leave" },
+  { code: "ON_CALL", label: "On Call" },
 ];
 
 export const shiftColorClasses: Record<ShiftCode, string> = {
@@ -19,6 +20,7 @@ export const shiftColorClasses: Record<ShiftCode, string> = {
   H: "border-orange-200 bg-orange-100 text-orange-700",
   "%": "border-slate-200 bg-slate-100 text-slate-400",
   LEAVE: "border-purple-200 bg-purple-100 text-purple-700",
+  ON_CALL: "border-rose-200 bg-rose-100 text-rose-700",
 };
 
 export function getEntryKey(staffId: string, shiftDate: string) {
@@ -26,7 +28,7 @@ export function getEntryKey(staffId: string, shiftDate: string) {
 }
 
 export function buildEntryMap(entries: RosterEntry[]) {
-  return new Map(entries.map((entry) => [getEntryKey(entry.staff_id, entry.shift_date), entry]));
+  return new Map(entries.filter((entry) => entry.staff_id).map((entry) => [getEntryKey(entry.staff_id ?? "", entry.shift_date), entry]));
 }
 
 export function getShiftConfiguration(configs: ShiftConfiguration[], departmentId: string, code: ShiftCode) {
@@ -44,6 +46,7 @@ export function summarizeDays(entries: RosterEntry[], year: number, month: numbe
       H: 0,
       "%": 0,
       LEAVE: 0,
+      ON_CALL: 0,
     };
 
     entries
@@ -62,7 +65,7 @@ export function monthlyShiftTotals(entries: RosterEntry[]) {
       totals[entry.shift_code] += 1;
       return totals;
     },
-    { M: 0, A: 0, N: 0, O: 0, H: 0, "%": 0, LEAVE: 0 } as Record<ShiftCode, number>,
+    { M: 0, A: 0, N: 0, O: 0, H: 0, "%": 0, LEAVE: 0, ON_CALL: 0 } as Record<ShiftCode, number>,
   );
 }
 
@@ -72,6 +75,7 @@ export function findConflicts(entries: RosterEntry[], staff: Staff[]): Conflict[
   const byStaff = new Map<string, RosterEntry[]>();
 
   entries.forEach((entry) => {
+    if (!entry.staff_id) return;
     const current = byStaff.get(entry.staff_id) ?? [];
     current.push(entry);
     byStaff.set(entry.staff_id, current);
@@ -98,6 +102,7 @@ export function findConflicts(entries: RosterEntry[], staff: Staff[]): Conflict[
   entries
     .filter((entry) => ["M", "A", "N"].includes(entry.shift_code))
     .forEach((entry) => {
+      if (!entry.staff_id) return;
       const key = `${entry.shift_date}:${entry.shift_code}`;
       const current = byDateAndShift.get(key) ?? [];
       current.push(entry);
@@ -112,7 +117,9 @@ export function findConflicts(entries: RosterEntry[], staff: Staff[]): Conflict[
 
     if (!hasSenior && shiftEntries[0]) {
       shiftEntries.forEach((entry) => {
-        conflicts.push({ staffId: entry.staff_id, date: entry.shift_date, reason: "No senior staff assigned to this shift" });
+        if (entry.staff_id) {
+          conflicts.push({ staffId: entry.staff_id, date: entry.shift_date, reason: "No senior staff assigned to this shift" });
+        }
       });
     }
   });
@@ -127,6 +134,7 @@ export function buildLeaveSpans(entries: RosterEntry[]): LeaveSpanSegment[] {
   entries
     .filter((entry) => entry.is_leave || entry.shift_code === "LEAVE")
     .forEach((entry) => {
+      if (!entry.staff_id) return;
       const current = byStaff.get(entry.staff_id) ?? [];
       current.push(entry);
       byStaff.set(entry.staff_id, current);

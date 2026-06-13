@@ -12,7 +12,12 @@ import type { Department, Staff } from "@/lib/types";
 export function StaffTable({ staff, departments }: { staff: Staff[]; departments: Department[] }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(
-    () => staff.filter((person) => person.full_name.toLowerCase().includes(query.toLowerCase()) || person.staff_number.toLowerCase().includes(query.toLowerCase())),
+    () =>
+      staff.filter(
+        (person) =>
+          person.full_name.toLowerCase().includes(query.toLowerCase()) ||
+          (person.staff_number ?? "").toLowerCase().includes(query.toLowerCase()),
+      ),
     [query, staff],
   );
 

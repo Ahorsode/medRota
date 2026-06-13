@@ -6,6 +6,7 @@ import { Loader2, LockKeyhole, Mail, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { createLoginSession } from "@/lib/actions/sessions";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -21,11 +22,18 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const { error: authError } = await createClient().auth.signInWithPassword({ email, password });
+      const { data, error: authError } = await createClient().auth.signInWithPassword({ email, password });
 
       if (authError) {
         setError(authError.message || "Invalid email or password.");
         return;
+      }
+
+      if (data.user) {
+        const loginSession = await createLoginSession({ user_id: data.user.id });
+        if ("id" in loginSession) {
+          window.localStorage.setItem("medrota_login_session_id", loginSession.id);
+        }
       }
 
       router.push("/dashboard");

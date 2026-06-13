@@ -12,12 +12,14 @@ export function RosterToolbar({
   staff,
   entries,
   onStatusChange,
+  onPersistStatus,
 }: {
   roster: Roster;
   department: Department;
   staff: Staff[];
   entries: RosterEntry[];
   onStatusChange: (status: RosterStatus) => void;
+  onPersistStatus?: (status: RosterStatus) => void;
 }) {
   function nextStatus() {
     const transitions: Partial<Record<RosterStatus, RosterStatus>> = {
@@ -60,6 +62,7 @@ export function RosterToolbar({
           variant={targetStatus === "published" ? "navy" : "default"}
           onClick={() => {
             onStatusChange(targetStatus);
+            onPersistStatus?.(targetStatus);
             toast.success(`Roster marked ${targetStatus}`);
           }}
         >

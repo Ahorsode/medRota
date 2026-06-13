@@ -3,9 +3,10 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import type { Department, Roster, RosterEntry, Staff } from "@/lib/types";
-import { hospital } from "@/lib/data/mock";
 import { getMonthDays, monthNames } from "@/lib/utils/dates";
 import { buildEntryMap, getEntryKey } from "@/lib/utils/shifts";
+
+const hospitalName = "SDA Hospital";
 
 interface ExportPayload {
   roster: Roster;
@@ -21,7 +22,7 @@ export function exportRosterToPdf({ roster, department, staff, entries }: Export
   const activeStaff = staff.filter((person) => person.department_id === department.id);
 
   doc.setFontSize(16);
-  doc.text(hospital.name, 40, 36);
+  doc.text(hospitalName, 40, 36);
   doc.setFontSize(11);
   doc.text(`${department.name.toUpperCase()} DUTY ROSTER · ${monthNames[roster.month - 1]} ${roster.year}`, 40, 56);
 
@@ -64,7 +65,7 @@ export function exportRosterToExcel({ roster, department, staff, entries }: Expo
   const entryMap = buildEntryMap(entries);
   const activeStaff = staff.filter((person) => person.department_id === department.id);
   const rows = [
-    [hospital.name],
+    [hospitalName],
     [`${department.name.toUpperCase()} DUTY ROSTER`, `${monthNames[roster.month - 1]} ${roster.year}`],
     ["Name", "Rank", ...days.map((day) => day.dayNumber)],
     ["", "", ...days.map((day) => day.dayName)],

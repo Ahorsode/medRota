@@ -87,7 +87,10 @@ export function RosterGrid({
               return (
                 <div
                   key={person.id}
-                  className="absolute left-0 grid h-[52px] items-center border-b border-slate-100"
+                  className={cn(
+                    "absolute left-0 grid h-[52px] items-center border-b border-slate-100",
+                    person.employment_type === "Locum" && "border-b-2 border-dashed border-rose-200",
+                  )}
                   style={{
                     transform: `translateY(${virtualRow.start}px)`,
                     gridTemplateColumns: `220px 70px repeat(${days.length}, 44px)`,
@@ -99,7 +102,10 @@ export function RosterGrid({
                       setSelectedStaff(person);
                       setDrawerOpen(true);
                     }}
-                    className="sticky left-0 z-20 flex h-full items-center border-r border-slate-200 bg-white px-4 text-left text-sm font-bold text-slate-900 hover:text-[#2E86AB]"
+                    className={cn(
+                      "sticky left-0 z-20 flex h-full items-center border-r border-slate-200 bg-white px-4 text-left text-sm font-bold text-slate-900 hover:text-[#2E86AB]",
+                      person.employment_type === "Locum" && "bg-rose-50",
+                    )}
                   >
                     {person.full_name}
                   </button>

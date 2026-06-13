@@ -28,6 +28,8 @@ export const departments: Department[] = [
   name,
   description,
   is_active: true,
+  department_type: "department",
+  parent_id: null,
   created_at: now,
 }));
 

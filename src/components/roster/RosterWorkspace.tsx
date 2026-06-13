@@ -6,6 +6,7 @@ import { RosterStatusBadge } from "@/components/roster/RosterStatusBadge";
 import { RosterToolbar } from "@/components/roster/RosterToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useUpdateRosterEntry, useUpdateRosterStatus } from "@/lib/hooks/useRoster";
 import type { Department, Roster, RosterEntry, ShiftCode, ShiftConfiguration, Staff } from "@/lib/types";
 import { getMonthDays, monthNames } from "@/lib/utils/dates";
 import { monthlyShiftTotals } from "@/lib/utils/shifts";
@@ -28,6 +29,8 @@ export function RosterWorkspace({
   const departmentStaff = staff.filter((person) => person.department_id === department.id);
   const totals = useMemo(() => monthlyShiftTotals(entries), [entries]);
   const days = getMonthDays(roster.year, roster.month);
+  const updateEntry = useUpdateRosterEntry();
+  const updateStatus = useUpdateRosterStatus();
 
   function handleCellChange(staffId: string, date: string, shiftCode: ShiftCode) {
     setEntries((current) =>
@@ -43,6 +46,7 @@ export function RosterWorkspace({
           : entry,
       ),
     );
+    updateEntry.mutate({ rosterId: roster.id, staffId, shiftDate: date, shiftCode });
   }
 
   return (
@@ -71,6 +75,7 @@ export function RosterWorkspace({
               published_at: status === "published" ? new Date().toISOString() : current.published_at,
             }))
           }
+          onPersistStatus={(status) => updateStatus.mutate({ id: roster.id, status })}
         />
       </div>
 

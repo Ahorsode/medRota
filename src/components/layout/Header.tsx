@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { closeLoginSession } from "@/lib/actions/sessions";
 import { useSidebar } from "@/lib/context/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,6 +15,11 @@ export function Header() {
 
   async function handleLogout() {
     try {
+      const sessionId = window.localStorage.getItem("medrota_login_session_id");
+      if (sessionId) {
+        await closeLoginSession(sessionId);
+        window.localStorage.removeItem("medrota_login_session_id");
+      }
       await createClient().auth.signOut();
     } catch {
       toast.info("Signed out locally. Supabase keys are not configured yet.");

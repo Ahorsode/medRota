@@ -4,8 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RosterWorkspace } from "@/components/roster/RosterWorkspace";
 import { Button } from "@/components/ui/button";
-import { departments, rosterEntries, rosters, shiftConfigurations, staff } from "@/lib/data/mock";
+import { getDepartments } from "@/lib/actions/departments";
+import { getRosterWithEntries, getShiftConfigurations } from "@/lib/actions/rosters";
+import { getStaff } from "@/lib/actions/staff";
 import { monthNames } from "@/lib/utils/dates";
+
+export const dynamic = "force-dynamic";
 
 export default async function RosterEditorPage({
   params,
@@ -15,32 +19,21 @@ export default async function RosterEditorPage({
   const { deptId, year, month } = await params;
   const numericYear = Number(year);
   const numericMonth = Number(month);
+  const [departments, rosterData, staff, shiftConfigurations] = await Promise.all([
+    getDepartments(),
+    getRosterWithEntries(deptId, numericYear, numericMonth),
+    getStaff(),
+    getShiftConfigurations(deptId),
+  ]);
   const department = departments.find((item) => item.id === deptId);
-  const roster =
-    rosters.find((item) => item.department_id === deptId && item.year === numericYear && item.month === numericMonth) ??
-    (department
-      ? {
-          id: `roster-${deptId}-${numericYear}-${numericMonth}`,
-          department_id: deptId,
-          month: numericMonth,
-          year: numericYear,
-          status: "draft" as const,
-          created_by: null,
-          approved_by: null,
-          created_at: new Date().toISOString(),
-          published_at: null,
-        }
-      : null);
 
-  if (!department || !roster) notFound();
-
-  const entries = rosterEntries.filter((entry) => entry.roster_id === roster.id);
+  if (!department || !rosterData.roster) notFound();
 
   return (
     <div>
       <PageHeader
         title={`${department.name} Duty Roster`}
-        description={`${monthNames[numericMonth - 1]} ${numericYear} · premium digital grid inspired by the SDA paper roster.`}
+        description={`${monthNames[numericMonth - 1]} ${numericYear} · digital grid for SDA Hospital coverage.`}
         actions={
           <Button asChild variant="outline">
             <Link href="/dashboard/rosters">
@@ -51,9 +44,9 @@ export default async function RosterEditorPage({
         }
       />
       <RosterWorkspace
-        roster={roster}
+        roster={rosterData.roster}
         department={department}
-        initialEntries={entries}
+        initialEntries={rosterData.entries}
         staff={staff}
         shiftConfigurations={shiftConfigurations}
       />

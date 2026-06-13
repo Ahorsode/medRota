@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Hospital {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  location    String?
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  departments Department[]
+  staff       Staff[]
+
+  @@map("hospitals")
+}
+
+model Department {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hospital_id          String?              @db.Uuid
+  name                 String
+  description          String?
+  is_active            Boolean              @default(true)
+  department_type      String               @default("department")
+  parent_id            String?              @db.Uuid
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  hospital             Hospital?            @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  parent               Department?          @relation("DepartmentHierarchy", fields: [parent_id], references: [id], onDelete: SetNull)
+  children             Department[]         @relation("DepartmentHierarchy")
+  shift_configurations ShiftConfiguration[]
+  staff                Staff[]
+  rosters              Roster[]
+  user_roles           UserRole[]
+  messages             Message[]
+  handover_reports     HandoverReport[]
+
+  @@map("departments")
+}
+
+model ShiftConfiguration {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id  String?       @db.Uuid
+  shift_code     String
+  shift_name     String
+  start_time     DateTime?     @db.Time(6)
+  end_time       DateTime?     @db.Time(6)
+  color_class    String?
+  is_active      Boolean       @default(true)
+  department     Department?   @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  roster_entries RosterEntry[]
+
+  @@map("shift_configurations")
+}
+
+model Staff {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hospital_id           String?            @db.Uuid
+  department_id         String?            @db.Uuid
+  user_id               String?            @db.Uuid
+  staff_number          String?            @unique
+  full_name             String
+  rank                  String?
+  position              String?
+  employment_type       String?
+  phone                 String?
+  email                 String?
+  is_active             Boolean            @default(true)
+  created_at            DateTime           @default(now()) @db.Timestamptz(6)
+  hospital              Hospital?          @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  department            Department?        @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  roster_entries        RosterEntry[]
+  leave_requests        LeaveRequest[]
+  swap_requests         ShiftSwap[]        @relation("SwapRequester")
+  swap_replacements     ShiftSwap[]        @relation("SwapReplacement")
+  attendance_records    AttendanceRecord[]
+  messages_sent         Message[]          @relation("MessageSender")
+  messages_received     MessageRecipient[]
+  handover_reports_from HandoverReport[]   @relation("HandoverFrom")
+  handover_reports_to   HandoverReport[]   @relation("HandoverTo")
+  assessments           StaffAssessment[]
+  training_records      TrainingRecord[]
+  login_sessions        LoginSession[]
+
+  @@map("staff")
+}
+
+model Roster {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id String?       @db.Uuid
+  month         Int
+  year          Int
+  status        String        @default("draft")
+  created_by    String?       @db.Uuid
+  approved_by   String?       @db.Uuid
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  published_at  DateTime?     @db.Timestamptz(6)
+  department    Department?   @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  entries       RosterEntry[]
+
+  @@unique([department_id, month, year])
+  @@map("rosters")
+}
+
+model RosterEntry {
+  id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roster_id                 String?             @db.Uuid
+  staff_id                  String?             @db.Uuid
+  shift_date                DateTime            @db.Date
+  shift_code                String
+  shift_config_id           String?             @db.Uuid
+  notes                     String?
+  is_leave                  Boolean             @default(false)
+  leave_type                String?
+  created_at                DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+  roster                    Roster?             @relation(fields: [roster_id], references: [id], onDelete: Cascade)
+  staff                     Staff?              @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  shift_config              ShiftConfiguration? @relation(fields: [shift_config_id], references: [id], onDelete: SetNull)
+  swap_as_requester         ShiftSwap[]         @relation("SwapRequesterEntry")
+  swap_as_replacement       ShiftSwap[]         @relation("SwapReplacementEntry")
+
+  @@unique([roster_id, staff_id, shift_date])
+  @@map("roster_entries")
+}
+
+model LeaveRequest {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id     String?   @db.Uuid
+  leave_type   String
+  start_date   DateTime  @db.Date
+  end_date     DateTime  @db.Date
+  reason       String?
+  status       String    @default("pending")
+  requested_at DateTime  @default(now()) @db.Timestamptz(6)
+  reviewed_by  String?   @db.Uuid
+  reviewed_at  DateTime? @db.Timestamptz(6)
+  notes        String?
+  staff        Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@map("leave_requests")
+}
+
+model ShiftSwap {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requester_id         String?      @db.Uuid
+  replacement_id       String?      @db.Uuid
+  requester_entry_id   String?      @db.Uuid
+  replacement_entry_id String?      @db.Uuid
+  status               String       @default("pending")
+  requested_at         DateTime     @default(now()) @db.Timestamptz(6)
+  reviewed_by          String?      @db.Uuid
+  requester            Staff?       @relation("SwapRequester", fields: [requester_id], references: [id], onDelete: Cascade)
+  replacement          Staff?       @relation("SwapReplacement", fields: [replacement_id], references: [id], onDelete: Cascade)
+  requester_entry      RosterEntry? @relation("SwapRequesterEntry", fields: [requester_entry_id], references: [id], onDelete: Cascade)
+  replacement_entry    RosterEntry? @relation("SwapReplacementEntry", fields: [replacement_entry_id], references: [id], onDelete: Cascade)
+
+  @@map("shift_swaps")
+}
+
+model UserRole {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String      @db.Uuid
+  role          String
+  department_id String?     @db.Uuid
+  department    Department? @relation(fields: [department_id], references: [id], onDelete: SetNull)
+
+  @@unique([user_id, role, department_id])
+  @@map("user_roles")
+}
+
+model AttendanceRecord {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id   String?   @db.Uuid
+  shift_date DateTime  @db.Date
+  clock_in   DateTime? @db.Timestamptz(6)
+  clock_out  DateTime? @db.Timestamptz(6)
+  status     String    @default("present")
+  notes      String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  staff      Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@unique([staff_id, shift_date])
+  @@map("attendance_records")
+}
+
+model Message {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender_id     String?            @db.Uuid
+  subject       String?
+  body          String
+  message_type  String             @default("direct")
+  department_id String?            @db.Uuid
+  created_at    DateTime           @default(now()) @db.Timestamptz(6)
+  sender        Staff?             @relation("MessageSender", fields: [sender_id], references: [id], onDelete: Cascade)
+  department    Department?        @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  recipients    MessageRecipient[]
+
+  @@map("messages")
+}
+
+model MessageRecipient {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  message_id String?   @db.Uuid
+  staff_id   String?   @db.Uuid
+  is_read    Boolean   @default(false)
+  read_at    DateTime? @db.Timestamptz(6)
+  message    Message?  @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  staff      Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, staff_id])
+  @@map("message_recipients")
+}
+
+model HandoverReport {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id   String?     @db.Uuid
+  shift_date      DateTime    @db.Date
+  shift_code      String
+  from_staff_id   String?     @db.Uuid
+  to_staff_id     String?     @db.Uuid
+  report_body     String
+  patients_count  Int?
+  critical_notes  String?
+  is_acknowledged Boolean     @default(false)
+  acknowledged_at DateTime?   @db.Timestamptz(6)
+  created_at      DateTime    @default(now()) @db.Timestamptz(6)
+  department      Department? @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  from_staff      Staff?      @relation("HandoverFrom", fields: [from_staff_id], references: [id])
+  to_staff        Staff?      @relation("HandoverTo", fields: [to_staff_id], references: [id])
+
+  @@map("handover_reports")
+}
+
+model StaffAssessment {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id               String?   @db.Uuid
+  assessed_by            String?   @db.Uuid
+  assessment_date        DateTime  @db.Date
+  period                 String
+  competency_score       Int?
+  efficiency_score       Int?
+  professionalism_score  Int?
+  ethical_score          Int?
+  overall_score          Float?
+  comments               String?
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  staff                  Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@map("staff_assessments")
+}
+
+model TrainingRecord {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id        String?  @db.Uuid
+  training_title  String
+  training_type   String
+  provider        String?
+  start_date      DateTime @db.Date
+  end_date        DateTime @db.Date
+  certificate_url String?
+  notes           String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  staff           Staff?   @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  @@map("training_records")
+}
+
+model LoginSession {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  staff_id         String?   @db.Uuid
+  login_at         DateTime  @default(now()) @db.Timestamptz(6)
+  logout_at        DateTime? @db.Timestamptz(6)
+  duration_minutes Int?
+  ip_address       String?
+  device           String?
+  staff            Staff?    @relation(fields: [staff_id], references: [id], onDelete: SetNull)
+
+  @@map("login_sessions")
+}

@@ -1,11 +1,28 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { leaveRequests } from "@/lib/data/mock";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createLeaveRequest, getLeaveRequests, reviewLeaveRequest } from "@/lib/actions/leave";
 
-export function useLeave() {
+export function useLeave(staffId?: string, departmentId?: string) {
   return useQuery({
-    queryKey: ["leave-requests"],
-    queryFn: () => leaveRequests,
+    queryKey: ["leave-requests", staffId ?? "all", departmentId ?? "all"],
+    queryFn: () => getLeaveRequests(staffId, departmentId),
+  });
+}
+
+export function useCreateLeave() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createLeaveRequest,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave-requests"] }),
+  });
+}
+
+export function useReviewLeave() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, reviewedBy, notes }: { id: string; status: "approved" | "rejected"; reviewedBy: string; notes?: string }) =>
+      reviewLeaveRequest(id, status, reviewedBy, notes),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave-requests"] }),
   });
 }
