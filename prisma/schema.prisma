@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["public", "auth"]
 }
 
 model Hospital {
@@ -16,6 +17,7 @@ model Hospital {
   staff       Staff[]
 
   @@map("hospitals")
+  @@schema("public")
 }
 
 model Department {
@@ -38,6 +40,7 @@ model Department {
   handover_reports     HandoverReport[]
 
   @@map("departments")
+  @@schema("public")
 }
 
 model ShiftConfiguration {
@@ -53,6 +56,7 @@ model ShiftConfiguration {
   roster_entries RosterEntry[]
 
   @@map("shift_configurations")
+  @@schema("public")
 }
 
 model Staff {
@@ -85,6 +89,7 @@ model Staff {
   login_sessions        LoginSession[]
 
   @@map("staff")
+  @@schema("public")
 }
 
 model Roster {
@@ -102,6 +107,7 @@ model Roster {
 
   @@unique([department_id, month, year])
   @@map("rosters")
+  @@schema("public")
 }
 
 model RosterEntry {
@@ -124,6 +130,7 @@ model RosterEntry {
 
   @@unique([roster_id, staff_id, shift_date])
   @@map("roster_entries")
+  @@schema("public")
 }
 
 model LeaveRequest {
@@ -141,6 +148,7 @@ model LeaveRequest {
   staff        Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
 
   @@map("leave_requests")
+  @@schema("public")
 }
 
 model ShiftSwap {
@@ -158,6 +166,7 @@ model ShiftSwap {
   replacement_entry    RosterEntry? @relation("SwapReplacementEntry", fields: [replacement_entry_id], references: [id], onDelete: Cascade)
 
   @@map("shift_swaps")
+  @@schema("public")
 }
 
 model UserRole {
@@ -169,6 +178,7 @@ model UserRole {
 
   @@unique([user_id, role, department_id])
   @@map("user_roles")
+  @@schema("public")
 }
 
 model AttendanceRecord {
@@ -184,6 +194,7 @@ model AttendanceRecord {
 
   @@unique([staff_id, shift_date])
   @@map("attendance_records")
+  @@schema("public")
 }
 
 model Message {
@@ -199,6 +210,7 @@ model Message {
   recipients    MessageRecipient[]
 
   @@map("messages")
+  @@schema("public")
 }
 
 model MessageRecipient {
@@ -212,6 +224,7 @@ model MessageRecipient {
 
   @@unique([message_id, staff_id])
   @@map("message_recipients")
+  @@schema("public")
 }
 
 model HandoverReport {
@@ -232,6 +245,7 @@ model HandoverReport {
   to_staff        Staff?      @relation("HandoverTo", fields: [to_staff_id], references: [id])
 
   @@map("handover_reports")
+  @@schema("public")
 }
 
 model StaffAssessment {
@@ -250,6 +264,7 @@ model StaffAssessment {
   staff                  Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
 
   @@map("staff_assessments")
+  @@schema("public")
 }
 
 model TrainingRecord {
@@ -266,6 +281,7 @@ model TrainingRecord {
   staff           Staff?   @relation(fields: [staff_id], references: [id], onDelete: Cascade)
 
   @@map("training_records")
+  @@schema("public")
 }
 
 model LoginSession {
@@ -280,4 +296,5 @@ model LoginSession {
   staff            Staff?    @relation(fields: [staff_id], references: [id], onDelete: SetNull)
 
   @@map("login_sessions")
+  @@schema("public")
 }

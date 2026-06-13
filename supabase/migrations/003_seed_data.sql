@@ -16,7 +16,7 @@ values
 on conflict (id) do nothing;
 
 insert into public.shift_configurations (department_id, shift_code, shift_name, start_time, end_time, color_class)
-select id, code, name, start_time::time, end_time::time, color_class
+select public.departments.id, code, shift_name, start_time::time, end_time::time, color_class
 from public.departments
 cross join (
   values
@@ -25,11 +25,11 @@ cross join (
     ('N', 'Night', '20:00', '08:00', 'bg-indigo-100 text-indigo-700 border-indigo-200'),
     ('O', 'Off Day', null, null, 'bg-slate-100 text-slate-500 border-slate-200'),
     ('H', 'Holiday', null, null, 'bg-orange-100 text-orange-700 border-orange-200')
-) as shifts(code, name, start_time, end_time, color_class)
+) as shifts(code, shift_name, start_time, end_time, color_class)
 where public.departments.name <> 'Security';
 
 insert into public.shift_configurations (department_id, shift_code, shift_name, start_time, end_time, color_class)
-select id, code, name, start_time::time, end_time::time, color_class
+select public.departments.id, code, shift_name, start_time::time, end_time::time, color_class
 from public.departments
 cross join (
   values
@@ -37,7 +37,7 @@ cross join (
     ('N', 'Night Security', '18:30', '07:00', 'bg-indigo-100 text-indigo-700 border-indigo-200'),
     ('%', 'Off Day', null, null, 'bg-slate-100 text-slate-400 border-slate-200'),
     ('H', 'Holiday', null, null, 'bg-orange-100 text-orange-700 border-orange-200')
-) as shifts(code, name, start_time, end_time, color_class)
+) as shifts(code, shift_name, start_time, end_time, color_class)
 where public.departments.name = 'Security';
 
 insert into public.staff (hospital_id, department_id, staff_number, full_name, rank, position, employment_type, phone, email)

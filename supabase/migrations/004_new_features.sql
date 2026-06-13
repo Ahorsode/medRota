@@ -121,57 +121,57 @@ alter table public.login_sessions enable row level security;
 
 create policy "Staff view own attendance, managers view department"
   on public.attendance_records for select to authenticated
-  using (app_private.is_own_staff(staff_id) or app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+  using (app_private.is_own_staff(attendance_records.staff_id) or app_private.can_manage_department(
+    (select s.department_id from public.staff s where s.id = attendance_records.staff_id)
   ));
 
 create policy "Managers write attendance"
   on public.attendance_records for all to authenticated
   using (app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+    (select s.department_id from public.staff s where s.id = attendance_records.staff_id)
   ))
   with check (app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+    (select s.department_id from public.staff s where s.id = attendance_records.staff_id)
   ));
 
 create policy "Staff see messages they sent or received"
   on public.messages for select to authenticated
-  using (app_private.is_own_staff(sender_id) or
+  using (app_private.is_own_staff(messages.sender_id) or
     exists (select 1 from public.message_recipients mr
       join public.staff s on s.id = mr.staff_id
-      where mr.message_id = id and s.user_id = auth.uid()));
+      where mr.message_id = messages.id and s.user_id = auth.uid()));
 
 create policy "Staff send messages"
   on public.messages for insert to authenticated
-  with check (app_private.is_own_staff(sender_id));
+  with check (app_private.is_own_staff(messages.sender_id));
 
 create policy "Recipients read their message records"
   on public.message_recipients for select to authenticated
-  using (app_private.is_own_staff(staff_id));
+  using (app_private.is_own_staff(message_recipients.staff_id));
 
 create policy "Recipients mark as read"
   on public.message_recipients for update to authenticated
-  using (app_private.is_own_staff(staff_id))
-  with check (app_private.is_own_staff(staff_id));
+  using (app_private.is_own_staff(message_recipients.staff_id))
+  with check (app_private.is_own_staff(message_recipients.staff_id));
 
 create policy "Dept members view handover reports"
   on public.handover_reports for select to authenticated
-  using (app_private.can_manage_department(department_id) or
-    app_private.is_own_staff(from_staff_id) or app_private.is_own_staff(to_staff_id));
+  using (app_private.can_manage_department(handover_reports.department_id) or
+    app_private.is_own_staff(handover_reports.from_staff_id) or app_private.is_own_staff(handover_reports.to_staff_id));
 
 create policy "Staff write handover reports"
   on public.handover_reports for insert to authenticated
-  with check (app_private.is_own_staff(from_staff_id));
+  with check (app_private.is_own_staff(handover_reports.from_staff_id));
 
 create policy "Receiving staff acknowledges handover"
   on public.handover_reports for update to authenticated
-  using (app_private.is_own_staff(to_staff_id) or app_private.can_manage_department(department_id))
-  with check (app_private.is_own_staff(to_staff_id) or app_private.can_manage_department(department_id));
+  using (app_private.is_own_staff(handover_reports.to_staff_id) or app_private.can_manage_department(handover_reports.department_id))
+  with check (app_private.is_own_staff(handover_reports.to_staff_id) or app_private.can_manage_department(handover_reports.department_id));
 
 create policy "Staff view own assessments, managers view dept"
   on public.staff_assessments for select to authenticated
-  using (app_private.is_own_staff(staff_id) or app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+  using (app_private.is_own_staff(staff_assessments.staff_id) or app_private.can_manage_department(
+    (select s.department_id from public.staff s where s.id = staff_assessments.staff_id)
   ));
 
 create policy "Managers write assessments"
@@ -181,31 +181,31 @@ create policy "Managers write assessments"
 
 create policy "Staff view own training, managers view dept"
   on public.training_records for select to authenticated
-  using (app_private.is_own_staff(staff_id) or app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+  using (app_private.is_own_staff(training_records.staff_id) or app_private.can_manage_department(
+    (select s.department_id from public.staff s where s.id = training_records.staff_id)
   ));
 
 create policy "Managers write training records"
   on public.training_records for all to authenticated
   using (app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+    (select s.department_id from public.staff s where s.id = training_records.staff_id)
   ))
   with check (app_private.can_manage_department(
-    (select department_id from public.staff where id = staff_id)
+    (select s.department_id from public.staff s where s.id = training_records.staff_id)
   ));
 
 create policy "Users see own login sessions"
   on public.login_sessions for select to authenticated
-  using (user_id = auth.uid() or app_private.has_role('admin'));
+  using (login_sessions.user_id = auth.uid() or app_private.has_role('admin'));
 
 create policy "Users create own login sessions"
   on public.login_sessions for insert to authenticated
-  with check (user_id = auth.uid());
+  with check (login_sessions.user_id = auth.uid());
 
 create policy "Users update own login sessions"
   on public.login_sessions for update to authenticated
-  using (user_id = auth.uid() or app_private.has_role('admin'))
-  with check (user_id = auth.uid() or app_private.has_role('admin'));
+  using (login_sessions.user_id = auth.uid() or app_private.has_role('admin'))
+  with check (login_sessions.user_id = auth.uid() or app_private.has_role('admin'));
 
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.message_recipients;
