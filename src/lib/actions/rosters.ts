@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
+  serializeLeaveRequest,
   serializeRoster,
   serializeRosterEntry,
   serializeShiftConfiguration,
+  serializeStaff,
 } from "@/lib/actions/serializers";
+import { autoGenerateEntries, type AutoGenerateConfig } from "@/lib/utils/autoGenerate";
 import type { ShiftCode } from "@/lib/types";
 
 function toDate(value: string) {
@@ -142,5 +145,79 @@ export async function updateRosterStatus(id: string, status: "draft" | "submitte
     return serializeRoster(roster);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to update roster status" };
+  }
+}
+
+export async function autoGenerateRoster(
+  rosterId: string,
+  departmentId: string,
+  year: number,
+  month: number,
+  config: AutoGenerateConfig,
+) {
+  try {
+    const staff = await prisma.staff.findMany({
+      where: { department_id: departmentId, is_active: true },
+    });
+
+    const monthStart = new Date(Date.UTC(year, month - 1, 1));
+    const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+    const approvedLeaves = await prisma.leaveRequest.findMany({
+      where: {
+        staff_id: { in: staff.map((person) => person.id) },
+        status: "approved",
+        start_date: { lte: monthEnd },
+        end_date: { gte: monthStart },
+      },
+    });
+
+    const generated = autoGenerateEntries(
+      rosterId,
+      departmentId,
+      staff.map(serializeStaff),
+      year,
+      month,
+      approvedLeaves.map(serializeLeaveRequest),
+      config,
+    );
+
+    for (const person of staff) {
+      const leaveEntries = generated.filter((entry) => entry.staff_id === person.id && entry.shift_code === "LEAVE");
+      const entitlement =
+        person.employment_type === "Full-time"
+          ? config.annualLeaveEntitlementFullTime
+          : config.annualLeaveEntitlementPartTime;
+
+      for (const entry of leaveEntries.slice(entitlement)) {
+        entry.shift_code = "O";
+        entry.is_leave = false;
+        entry.leave_type = null;
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.rosterEntry.deleteMany({ where: { roster_id: rosterId } }),
+      ...(generated.length > 0
+        ? [
+            prisma.rosterEntry.createMany({
+              data: generated.map((entry) => ({
+                ...entry,
+                shift_date: toDate(entry.shift_date),
+              })),
+            }),
+          ]
+        : []),
+    ]);
+
+    const entries = await prisma.rosterEntry.findMany({
+      where: { roster_id: rosterId },
+      orderBy: { shift_date: "asc" },
+    });
+
+    revalidatePath("/dashboard/rosters");
+    return { entries: entries.map(serializeRosterEntry) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Auto-generate failed" };
   }
 }

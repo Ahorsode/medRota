@@ -13,6 +13,7 @@ export function RosterToolbar({
   entries,
   onStatusChange,
   onPersistStatus,
+  onAutoGenerate,
 }: {
   roster: Roster;
   department: Department;
@@ -20,6 +21,7 @@ export function RosterToolbar({
   entries: RosterEntry[];
   onStatusChange: (status: RosterStatus) => void;
   onPersistStatus?: (status: RosterStatus) => void;
+  onAutoGenerate: () => void;
 }) {
   function nextStatus() {
     const transitions: Partial<Record<RosterStatus, RosterStatus>> = {
@@ -40,7 +42,7 @@ export function RosterToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => toast.success("Auto-generation preview applied")}>
+      <Button size="sm" variant="outline" onClick={onAutoGenerate}>
         <Sparkles className="h-4 w-4" />
         Auto-Generate
       </Button>

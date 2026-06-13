@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, LockKeyhole, Mail, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,6 @@ import { createLoginSession } from "@/lib/actions/sessions";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,17 +28,19 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        const loginSession = await createLoginSession({ user_id: data.user.id });
-        if ("id" in loginSession) {
-          window.localStorage.setItem("medrota_login_session_id", loginSession.id);
+        try {
+          const loginSession = await createLoginSession({ user_id: data.user.id });
+          if ("id" in loginSession) {
+            window.localStorage.setItem("medrota_login_session_id", loginSession.id);
+          }
+        } catch {
+          // Session logging should not block login.
         }
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     } catch {
       setError("Supabase environment keys are missing. Add them to .env.local to enable login.");
-    } finally {
       setLoading(false);
     }
   }
