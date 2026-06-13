@@ -3,9 +3,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createHandoverReport, getHandoverReports } from "@/lib/actions/handover";
+import { acknowledgeHandover, createHandoverReport, getHandoverReports } from "@/lib/actions/handover";
 import { getDepartments } from "@/lib/actions/departments";
 import { getStaff } from "@/lib/actions/staff";
+import { createClient } from "@/lib/supabase/server";
 import { formatDateLabel } from "@/lib/utils/dates";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,17 @@ function today() {
 
 export default async function HandoverPage() {
   const [departments, staff] = await Promise.all([getDepartments(), getStaff()]);
-  const activeDepartment = departments[0] ?? null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const currentUserStaff = user ? staff.find((person) => person.user_id === user.id) : null;
+  const activeDepartment =
+    (currentUserStaff?.department_id
+      ? departments.find((department) => department.id === currentUserStaff.department_id)
+      : null) ??
+    departments[0] ??
+    null;
   const reports = activeDepartment ? await getHandoverReports(activeDepartment.id, today()) : [];
 
   async function createReport(formData: FormData) {
@@ -118,6 +129,20 @@ export default async function HandoverPage() {
                   </div>
                   <p className="mt-3 text-sm text-slate-600">{report.report_body}</p>
                   {report.critical_notes ? <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-800">{report.critical_notes}</p> : null}
+                  {!report.is_acknowledged ? (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await acknowledgeHandover(report.id);
+                      }}
+                      className="mt-3"
+                    >
+                      <Button type="submit" size="sm" variant="outline">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Acknowledge Handover
+                      </Button>
+                    </form>
+                  ) : null}
                 </article>
               ))
             ) : (

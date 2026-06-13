@@ -4,14 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDepartments } from "@/lib/actions/departments";
-import { getMessages, sendMessage } from "@/lib/actions/messages";
+import { getMessages, markMessageRead, sendMessage } from "@/lib/actions/messages";
 import { getStaff } from "@/lib/actions/staff";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const [staff, departments] = await Promise.all([getStaff(), getDepartments()]);
-  const currentStaff = staff[0] ?? null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const currentStaff = user ? staff.find((person) => person.user_id === user.id) ?? staff[0] ?? null : staff[0] ?? null;
   const messages = currentStaff ? await getMessages(currentStaff.id) : [];
 
   async function compose(formData: FormData) {
@@ -87,7 +92,21 @@ export default async function MessagesPage() {
                           {message.sender?.full_name ?? "Unknown sender"} · {new Date(message.created_at).toLocaleString()}
                         </p>
                       </div>
-                      {unread ? <Badge variant="blue">Unread</Badge> : <Badge>Read</Badge>}
+                      <div className="flex items-center gap-2">
+                        {unread ? <Badge variant="blue">Unread</Badge> : <Badge>Read</Badge>}
+                        {unread && currentStaff ? (
+                          <form
+                            action={async () => {
+                              "use server";
+                              await markMessageRead(message.id, currentStaff.id);
+                            }}
+                          >
+                            <Button type="submit" size="sm" variant="ghost" className="text-slate-500">
+                              Mark read
+                            </Button>
+                          </form>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-3 text-sm text-slate-600">{message.body}</p>
                   </article>

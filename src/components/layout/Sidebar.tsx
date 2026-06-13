@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MouseEvent, useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import {
   ArrowLeftRight,
   BarChart3,
+  BookOpenCheck,
   Building2,
   CalendarDays,
   Clock,
@@ -31,7 +33,7 @@ const items = [
   { href: "/dashboard/attendance", label: "Attendance", icon: Clock },
   { href: "/dashboard/leave", label: "Leave Management", icon: CalendarDays },
   { href: "/dashboard/swaps", label: "Shift Swaps", icon: ArrowLeftRight },
-  { href: "/dashboard/handover", label: "Handover Reports", icon: ClipboardList },
+  { href: "/dashboard/handover", label: "Handover Reports", icon: BookOpenCheck },
   { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   { href: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -40,6 +42,14 @@ const items = [
 export function Sidebar() {
   const pathname = usePathname();
   const { mobileOpen, setMobileOpen, collapsed, setCollapsed } = useSidebar();
+  const [hovered, setHovered] = useState(false);
+  const expanded = mobileOpen || !collapsed || hovered;
+
+  function toggleFromEmptySpace(event: MouseEvent<HTMLElement>) {
+    if (event.target === event.currentTarget) {
+      setCollapsed(!collapsed);
+    }
+  }
 
   return (
     <>
@@ -52,17 +62,23 @@ export function Sidebar() {
         />
       ) : null}
       <aside
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={toggleFromEmptySpace}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 shrink-0 flex-col bg-[#1A2B4A] text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:min-h-screen lg:shadow-none lg:transition-all",
+          "fixed inset-y-0 left-0 z-50 flex w-72 shrink-0 flex-col bg-[#1A2B4A] text-white shadow-2xl transition-all duration-200",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          collapsed ? "lg:w-16" : "lg:w-72",
+          expanded ? "lg:w-72" : "lg:w-16",
         )}
       >
-        <div className={cn("flex h-20 items-center gap-3 border-b border-white/10 px-4", collapsed && "lg:justify-center lg:px-2")}>
+        <div
+          className={cn("flex h-20 items-center gap-3 border-b border-white/10 px-4", !expanded && "lg:justify-center lg:px-2")}
+          onClick={toggleFromEmptySpace}
+        >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#A8DADC] text-[#1A2B4A]">
             <Stethoscope className="h-6 w-6" />
           </div>
-          <div className={cn("min-w-0", collapsed && "lg:hidden")}>
+          <div className={cn("min-w-0", !expanded && "lg:hidden")}>
             <p className="text-lg font-extrabold">MedRota</p>
             <p className="truncate text-xs text-white/65">SDA Hospital, Koforidua</p>
           </div>
@@ -77,7 +93,7 @@ export function Sidebar() {
           </Button>
         </div>
         <Tooltip.Provider delayDuration={150}>
-          <nav className="flex flex-1 flex-col gap-1 px-3 py-5">
+          <nav className="flex flex-1 flex-col gap-1 px-3 py-5" onClick={toggleFromEmptySpace}>
             {items.map((item) => {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
@@ -88,15 +104,15 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white",
                     active && "bg-[#2E86AB] text-white shadow-sm",
-                    collapsed && "lg:justify-center lg:px-0",
+                    !expanded && "lg:justify-center lg:px-0",
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
+                  <span className={cn(!expanded && "lg:hidden")}>{item.label}</span>
                 </Link>
               );
 
-              return collapsed ? (
+              return !expanded ? (
                 <Tooltip.Root key={item.href}>
                   <Tooltip.Trigger asChild>{navItem}</Tooltip.Trigger>
                   <Tooltip.Portal>
@@ -114,11 +130,11 @@ export function Sidebar() {
         <div className="border-t border-white/10 p-3">
           <Button
             variant="ghost"
-            className={cn("hidden w-full justify-center text-white hover:bg-white/10 hover:text-white lg:flex", !collapsed && "justify-between")}
+            className={cn("hidden w-full justify-center text-white hover:bg-white/10 hover:text-white lg:flex", expanded && "justify-between")}
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <span className={cn("text-sm font-semibold", collapsed && "hidden")}>Collapse</span>
+            <span className={cn("text-sm font-semibold", !expanded && "hidden")}>{collapsed ? "Expand" : "Collapse"}</span>
             {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
           </Button>
         </div>

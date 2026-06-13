@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAssessments } from "@/lib/actions/assessments";
+import { createAssessment, getAssessments } from "@/lib/actions/assessments";
 import { getLeaveRequests } from "@/lib/actions/leave";
 import { getStaffById } from "@/lib/actions/staff";
-import { getTrainingRecords } from "@/lib/actions/training";
+import { createTrainingRecord, getTrainingRecords } from "@/lib/actions/training";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,45 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
               </TableBody>
             </Table>
             {assessments.length === 0 ? <p className="mt-3 text-sm text-slate-500">No assessments recorded.</p> : null}
+            <details className="mt-4 rounded-lg border border-slate-200">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">+ Add Assessment</summary>
+              <form
+                action={async (formData: FormData) => {
+                  "use server";
+                  await createAssessment({
+                    staff_id: id,
+                    assessed_by: String(formData.get("assessed_by") ?? "") || undefined,
+                    assessment_date: String(formData.get("assessment_date") ?? ""),
+                    period: String(formData.get("period") ?? ""),
+                    competency_score: Number(formData.get("competency_score")) || undefined,
+                    efficiency_score: Number(formData.get("efficiency_score")) || undefined,
+                    professionalism_score: Number(formData.get("professionalism_score")) || undefined,
+                    ethical_score: Number(formData.get("ethical_score")) || undefined,
+                    comments: String(formData.get("comments") ?? "") || undefined,
+                  });
+                }}
+                className="grid gap-3 p-4 md:grid-cols-3"
+              >
+                <input name="period" placeholder="Period (e.g. Q1 2026)" className="h-10 rounded-md border border-slate-200 px-3 text-sm" required />
+                <input name="assessment_date" type="date" className="h-10 rounded-md border border-slate-200 px-3 text-sm" required />
+                <input name="assessed_by" placeholder="Assessor ID" className="h-10 rounded-md border border-slate-200 px-3 text-sm" />
+                {["competency_score", "efficiency_score", "professionalism_score", "ethical_score"].map((field) => (
+                  <input
+                    key={field}
+                    name={field}
+                    type="number"
+                    min={1}
+                    max={5}
+                    placeholder={`${field.replace("_score", "").replace("_", " ")} (1-5)`}
+                    className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+                  />
+                ))}
+                <textarea name="comments" placeholder="Comments" className="min-h-20 rounded-md border border-slate-200 px-3 py-2 text-sm md:col-span-3" />
+                <Button type="submit" className="md:col-span-3">
+                  Save Assessment
+                </Button>
+              </form>
+            </details>
           </CardContent>
         </Card>
 
@@ -131,6 +171,42 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
               </TableBody>
             </Table>
             {trainingRecords.length === 0 ? <p className="mt-3 text-sm text-slate-500">No training records yet.</p> : null}
+            <details className="mt-4 rounded-lg border border-slate-200">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">+ Add Training Record</summary>
+              <form
+                action={async (formData: FormData) => {
+                  "use server";
+                  await createTrainingRecord({
+                    staff_id: id,
+                    training_title: String(formData.get("training_title") ?? ""),
+                    training_type: String(formData.get("training_type") ?? "attended"),
+                    provider: String(formData.get("provider") ?? "") || undefined,
+                    start_date: String(formData.get("start_date") ?? ""),
+                    end_date: String(formData.get("end_date") ?? ""),
+                    notes: String(formData.get("notes") ?? "") || undefined,
+                  });
+                }}
+                className="grid gap-3 p-4 md:grid-cols-3"
+              >
+                <input
+                  name="training_title"
+                  placeholder="Training title"
+                  className="h-10 rounded-md border border-slate-200 px-3 text-sm md:col-span-2"
+                  required
+                />
+                <select name="training_type" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm">
+                  <option value="attended">Attended</option>
+                  <option value="given">Given</option>
+                </select>
+                <input name="provider" placeholder="Provider / Institution" className="h-10 rounded-md border border-slate-200 px-3 text-sm" />
+                <input name="start_date" type="date" className="h-10 rounded-md border border-slate-200 px-3 text-sm" required />
+                <input name="end_date" type="date" className="h-10 rounded-md border border-slate-200 px-3 text-sm" required />
+                <textarea name="notes" placeholder="Notes" className="min-h-20 rounded-md border border-slate-200 px-3 py-2 text-sm md:col-span-3" />
+                <Button type="submit" className="md:col-span-3">
+                  Save Training Record
+                </Button>
+              </form>
+            </details>
           </CardContent>
         </Card>
       </div>

@@ -26,7 +26,7 @@ export async function getAssessments(staffId?: string, departmentId?: string) {
 
 export async function createAssessment(data: {
   staff_id: string;
-  assessed_by: string;
+  assessed_by?: string;
   assessment_date: string;
   period: string;
   competency_score?: number;

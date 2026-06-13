@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAttendanceRecords, markAbsent } from "@/lib/actions/attendance";
+import { clockIn, clockOut, getAttendanceRecords, markAbsent } from "@/lib/actions/attendance";
 import { getDepartments } from "@/lib/actions/departments";
 import { getStaff } from "@/lib/actions/staff";
 import { formatDateLabel } from "@/lib/utils/dates";
@@ -27,6 +27,20 @@ export default async function AttendancePage() {
     const staffId = String(formData.get("staff_id") ?? "");
     if (!staffId) return;
     await markAbsent(staffId, String(formData.get("shift_date") ?? today()), String(formData.get("notes") ?? "") || undefined);
+  }
+
+  async function clockInAction(formData: FormData) {
+    "use server";
+    const staffId = String(formData.get("staff_id") ?? "");
+    if (!staffId) return;
+    await clockIn(staffId, today());
+  }
+
+  async function clockOutAction(formData: FormData) {
+    "use server";
+    const staffId = String(formData.get("staff_id") ?? "");
+    if (!staffId) return;
+    await clockOut(staffId, today());
   }
 
   return (
@@ -87,14 +101,41 @@ export default async function AttendancePage() {
                         <TableCell>{timeLabel(record?.clock_in ?? null)}</TableCell>
                         <TableCell>{timeLabel(record?.clock_out ?? null)}</TableCell>
                         <TableCell>
-                          <form action={markAbsentAction} className="flex items-center gap-2">
-                            <input type="hidden" name="staff_id" value={person.id} />
-                            <input type="hidden" name="shift_date" value={today()} />
-                            <Button size="sm" variant="outline" type="submit">
-                              <Clock className="h-4 w-4" />
-                              Mark Absent
-                            </Button>
-                          </form>
+                          <div className="flex items-center gap-2">
+                            <form action={clockInAction}>
+                              <input type="hidden" name="staff_id" value={person.id} />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                type="submit"
+                                disabled={!!record?.clock_in}
+                                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                              >
+                                <Clock className="mr-1 h-3 w-3" />
+                                In
+                              </Button>
+                            </form>
+                            <form action={clockOutAction}>
+                              <input type="hidden" name="staff_id" value={person.id} />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                type="submit"
+                                disabled={!record?.clock_in || !!record?.clock_out}
+                                className="text-slate-700"
+                              >
+                                <Clock className="mr-1 h-3 w-3" />
+                                Out
+                              </Button>
+                            </form>
+                            <form action={markAbsentAction}>
+                              <input type="hidden" name="staff_id" value={person.id} />
+                              <input type="hidden" name="shift_date" value={today()} />
+                              <Button size="sm" variant="outline" type="submit" className="border-red-200 text-red-700 hover:bg-red-50">
+                                Absent
+                              </Button>
+                            </form>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
