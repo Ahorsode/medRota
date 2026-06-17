@@ -5,6 +5,7 @@ export type ShiftCode = "M" | "A" | "N" | "O" | "H" | "%" | "LEAVE" | "ON_CALL";
 export type LeaveStatus = "pending_hod" | "pending_hr" | "approved" | "rejected_hod" | "rejected_hr";
 export type SwapStatus = "pending" | "approved" | "rejected";
 export type DepartmentType = "department" | "unit" | "special_clinic" | "autonomous_centre";
+export type NotificationType = "info" | "success" | "warning" | "error" | "leave" | "roster" | "swap" | "message";
 
 export interface Hospital {
   id: UUID;
@@ -54,11 +55,16 @@ export interface Staff {
   email: string | null;
   is_active: boolean;
   created_at: string;
+  must_change_password: boolean;
+  invited_at: string | null;
+  password_changed_at: string | null;
   department?: Department | null;
   leave_requests?: LeaveRequest[];
   attendance_records?: AttendanceRecord[];
   assessments?: StaffAssessment[];
   training_records?: TrainingRecord[];
+  payroll_summaries?: PayrollSummary[];
+  notifications?: Notification[];
 }
 
 export interface Roster {
@@ -69,9 +75,11 @@ export interface Roster {
   status: RosterStatus;
   created_by: UUID | null;
   approved_by: UUID | null;
-  signatures?: Array<{ role: string; name: string; signed_at: string }>;
+  signatures?: Array<{ role: string; name: string; user_id?: UUID; signed_at: string }>;
   hod_signed_at?: string | null;
+  hod_signed_by?: UUID | null;
   director_signed_at?: string | null;
+  director_signed_by?: UUID | null;
   created_at: string;
   published_at: string | null;
   department?: Department | null;
@@ -264,6 +272,54 @@ export interface ShiftAllowanceSummary {
   total: number;
 }
 
+export interface AuditLog {
+  id: UUID;
+  user_id: UUID | null;
+  staff_id: UUID | null;
+  action: string;
+  entity_type: string;
+  entity_id: UUID | null;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export interface AllowanceRate {
+  id: UUID;
+  hospital_id: UUID | null;
+  shift_code: string;
+  rate_ghs: number;
+  effective_from: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  notes: string | null;
+}
+
+export interface PayrollSummary {
+  id: UUID;
+  staff_id: UUID | null;
+  month: number;
+  year: number;
+  morning_shifts: number;
+  afternoon_shifts: number;
+  night_shifts: number;
+  weekend_shifts: number;
+  holiday_shifts: number;
+  on_call_shifts: number;
+  total_shifts: number;
+  leave_days: number;
+  absent_days: number;
+  night_allowance: number;
+  weekend_allowance: number;
+  holiday_allowance: number;
+  on_call_allowance: number;
+  total_allowance: number;
+  generated_at: string;
+  staff?: Staff | null;
+}
+
 export interface LocumShift {
   id: UUID;
   department_id: UUID | null;
@@ -276,4 +332,16 @@ export interface LocumShift {
   created_at: string;
   department?: Department | null;
   filled_staff?: Staff | null;
+}
+
+export interface Notification {
+  id: UUID;
+  staff_id: UUID | null;
+  title: string;
+  body: string | null;
+  type: NotificationType;
+  is_read: boolean;
+  read_at: string | null;
+  link: string | null;
+  created_at: string;
 }

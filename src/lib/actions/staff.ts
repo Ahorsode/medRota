@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/actions/audit";
 import { prisma } from "@/lib/prisma";
 import { serializeStaff } from "@/lib/actions/serializers";
+import { getSessionUser, type UserRoleName } from "@/lib/auth/getSessionUser";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type StaffInput = {
   full_name: string;
@@ -15,7 +17,22 @@ export type StaffInput = {
   phone?: string;
   email?: string;
   staff_number: string;
+  role?: UserRoleName;
 };
+
+const provisionableRoles = new Set<UserRoleName>([
+  "admin",
+  "hr_officer",
+  "department_head",
+  "doctor",
+  "nurse",
+  "medical_director",
+  "staff",
+]);
+
+function canManageStaff(role: UserRoleName) {
+  return role === "admin" || role === "hr_officer";
+}
 
 export async function getStaff(departmentId?: string) {
   try {
@@ -53,12 +70,102 @@ export async function getStaffById(id: string) {
 
 export async function createStaff(data: StaffInput) {
   try {
+    const actor = await getSessionUser();
+    if (!actor) {
+      return { error: "You must be signed in to create staff accounts." };
+    }
+    if (!canManageStaff(actor.role)) {
+      return { error: "You do not have permission to create staff accounts." };
+    }
+
+    const email = data.email?.trim();
+    const staffNumber = data.staff_number.trim();
+    const departmentId = data.department_id.trim();
+    const role = data.role && provisionableRoles.has(data.role) ? data.role : "staff";
+
+    if (!email) {
+      return { error: "Email is required to create a staff account." };
+    }
+    if (!staffNumber) {
+      return { error: "Staff number is required to create a staff account." };
+    }
+    if (!departmentId) {
+      return { error: "Department is required to create a staff account." };
+    }
+
     const hospitalId =
       data.hospital_id ??
-      (data.department_id
-        ? (await prisma.department.findUnique({ where: { id: data.department_id }, select: { hospital_id: true } }))?.hospital_id
+      (departmentId
+        ? (await prisma.department.findUnique({ where: { id: departmentId }, select: { hospital_id: true } }))?.hospital_id
         : null);
-    const staff = await prisma.staff.create({ data: { ...data, hospital_id: hospitalId ?? undefined } });
+
+    const admin = createAdminClient();
+    const { data: authResult, error: authError } = await admin.auth.admin.createUser({
+      email,
+      password: staffNumber,
+      email_confirm: true,
+      user_metadata: {
+        full_name: data.full_name,
+        provisioned_by: "staff_form",
+      },
+    });
+
+    if (authError || !authResult?.user) {
+      return { error: authError?.message ?? "Failed to create login account for this staff member." };
+    }
+
+    const userId = authResult.user.id;
+    let staff;
+
+    try {
+      staff = await prisma.$transaction(async (tx) => {
+        const createdStaff = await tx.staff.create({
+          data: {
+            full_name: data.full_name,
+            department_id: departmentId,
+            hospital_id: hospitalId ?? undefined,
+            rank: data.rank,
+            position: data.position,
+            employment_type: data.employment_type,
+            phone: data.phone,
+            email,
+            staff_number: staffNumber,
+            user_id: userId,
+            must_change_password: true,
+            invited_at: new Date(),
+          },
+        });
+
+        await tx.userRole.create({
+          data: {
+            user_id: userId,
+            role,
+            department_id: departmentId,
+          },
+        });
+
+        return createdStaff;
+      });
+    } catch (dbError) {
+      try {
+        await admin.auth.admin.deleteUser(userId);
+      } catch {
+        // Best effort rollback; surface the original database failure.
+      }
+      throw dbError;
+    }
+
+    await logAudit({
+      userId: actor.id,
+      staffId: staff.id,
+      action: "staff_account_provisioned",
+      entityType: "staff",
+      entityId: staff.id,
+      newValue: {
+        email,
+        role,
+      },
+    });
     revalidatePath("/dashboard/staff");
     return serializeStaff(staff);
   } catch (error) {
@@ -66,18 +173,70 @@ export async function createStaff(data: StaffInput) {
   }
 }
 
+export async function resetStaffPassword(staffId: string) {
+  try {
+    const actor = await getSessionUser();
+    if (!actor) {
+      return { error: "You must be signed in to reset staff passwords." };
+    }
+    if (!canManageStaff(actor.role)) {
+      return { error: "You do not have permission to reset staff passwords." };
+    }
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+    if (!staff?.user_id) {
+      return { error: "This staff member has no linked login account." };
+    }
+    if (!staff.staff_number) {
+      return { error: "This staff member has no staff number to use as a temporary password." };
+    }
+
+    const admin = createAdminClient();
+    const { error: authError } = await admin.auth.admin.updateUserById(staff.user_id, {
+      password: staff.staff_number,
+    });
+
+    if (authError) {
+      return { error: authError.message };
+    }
+
+    await prisma.staff.update({
+      where: { id: staffId },
+      data: {
+        must_change_password: true,
+        password_changed_at: null,
+      },
+    });
+
+    await logAudit({
+      userId: actor.id,
+      staffId,
+      action: "staff_password_reset",
+      entityType: "staff",
+      entityId: staffId,
+    });
+
+    revalidatePath(`/dashboard/staff/${staffId}`);
+    revalidatePath("/dashboard/staff");
+    return { success: true, temporaryPassword: staff.staff_number };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to reset password" };
+  }
+}
+
 export async function updateStaff(
   id: string,
-  data: Partial<Omit<StaffInput, "staff_number" | "hospital_id"> & { is_active: boolean }>,
+  data: Partial<Omit<StaffInput, "staff_number" | "hospital_id" | "role"> & { is_active: boolean }>,
 ) {
   try {
     const staff = await prisma.staff.update({ where: { id }, data });
+    const auditData = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, value ?? null]));
     await logAudit({
       staffId: id,
       action: "staff_updated",
       entityType: "staff",
       entityId: id,
-      newValue: data,
+      newValue: auditData,
     });
     revalidatePath("/dashboard/staff");
     revalidatePath("/dashboard/my-profile");

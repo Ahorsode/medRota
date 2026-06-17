@@ -188,6 +188,9 @@ function staffMember(id: string, departmentId: string, fullName: string, rank: s
     email: `${fullName.toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\./, "").replace(/\.$/, "")}@sdahospital.example`,
     is_active: true,
     created_at: now,
+    must_change_password: false,
+    invited_at: now,
+    password_changed_at: now,
   };
 }
 

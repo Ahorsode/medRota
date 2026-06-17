@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/actions/audit";
+import { createNotification } from "@/lib/actions/notifications";
 import { prisma } from "@/lib/prisma";
 import { serializeLeaveRequest } from "@/lib/actions/serializers";
 
@@ -66,7 +67,7 @@ export async function hodReviewLeave(id: string, decision: "approve" | "reject",
       action: decision === "approve" ? "leave_hod_approved" : "leave_hod_rejected",
       entityType: "leave_request",
       entityId: id,
-      newValue: { status: newStatus, notes },
+      newValue: { status: newStatus, notes: notes ?? null },
     });
     revalidatePath("/dashboard/leave");
     revalidatePath("/dashboard/my-leave");
@@ -94,8 +95,17 @@ export async function reviewLeaveRequest(id: string, status: "approved" | "rejec
       entityType: "leave_request",
       entityId: id,
       oldValue: { status: existing.status },
-      newValue: { status, notes },
+      newValue: { status, notes: notes ?? null },
     });
+    if (leave.staff_id) {
+      await createNotification({
+        staff_id: leave.staff_id,
+        title: status === "approved" ? "Leave approved" : "Leave rejected",
+        body: `Your ${leave.leave_type} request has been ${status === "approved" ? "approved" : "rejected"}.`,
+        type: status === "approved" ? "success" : "error",
+        link: "/dashboard/my-leave",
+      });
+    }
     revalidatePath("/dashboard/leave");
     revalidatePath("/dashboard/my-leave");
     return serializeLeaveRequest(leave);

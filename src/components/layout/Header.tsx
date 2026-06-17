@@ -1,8 +1,9 @@
 "use client";
 
-import { Bell, LogOut, Menu, Search } from "lucide-react";
+import { LogOut, Menu, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { closeLoginSession } from "@/lib/actions/sessions";
@@ -47,9 +48,7 @@ export function Header({ user }: { user?: SessionUser }) {
             <p className="truncate text-xs capitalize text-slate-500">{user.role.replace("_", " ")}</p>
           </div>
         ) : null}
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-        </Button>
+        {user?.staffRecord?.id ? <NotificationBell staffId={user.staffRecord.id} /> : null}
         <Button variant="outline" size="sm" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
           Logout

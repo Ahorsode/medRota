@@ -9,6 +9,7 @@ import { SidebarProvider } from "@/lib/context/sidebar";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.staffRecord?.must_change_password) redirect("/change-password");
 
   const SidebarComponent =
     user.role === "department_head" || user.role === "medical_director"

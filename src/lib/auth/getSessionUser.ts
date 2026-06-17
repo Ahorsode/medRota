@@ -25,6 +25,7 @@ export type SessionUser = {
     phone: string | null;
     email: string | null;
     staff_number: string;
+    must_change_password: boolean;
   } | null;
   departmentId: string | null;
 };
@@ -74,6 +75,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           phone: staffRecord.phone,
           email: staffRecord.email,
           staff_number: staffRecord.staff_number ?? "",
+          must_change_password: staffRecord.must_change_password,
         }
       : null,
     departmentId,

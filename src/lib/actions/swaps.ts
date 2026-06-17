@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/lib/actions/notifications";
 import { prisma } from "@/lib/prisma";
 import { serializeShiftSwap } from "@/lib/actions/serializers";
 
@@ -111,7 +112,21 @@ export async function reviewSwap(id: string, status: "approved" | "rejected", re
       where: { id },
       data: { status, reviewed_by: reviewedBy ?? null },
     });
+    await Promise.all(
+      [swap.requester_id, swap.replacement_id]
+        .filter((staffId): staffId is string => Boolean(staffId))
+        .map((staffId) =>
+          createNotification({
+            staff_id: staffId,
+            title: status === "approved" ? "Shift swap approved" : "Shift swap rejected",
+            body: `Your shift swap request has been ${status}.`,
+            type: status === "approved" ? "success" : "error",
+            link: "/dashboard/my-swaps",
+          }),
+        ),
+    );
     revalidatePath("/dashboard/swaps");
+    revalidatePath("/dashboard/my-swaps");
     return serializeShiftSwap(swap);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to review shift swap" };

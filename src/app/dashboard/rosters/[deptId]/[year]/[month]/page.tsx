@@ -55,6 +55,7 @@ export default async function RosterEditorPage({
         initialEntries={rosterData.entries}
         staff={staff}
         shiftConfigurations={shiftConfigurations}
+        currentUser={user}
       />
     </div>
   );

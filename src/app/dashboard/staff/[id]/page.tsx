@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CheckCircle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
 import { LeaveStatusBadge } from "@/components/staff/LeaveStatusBadge";
@@ -10,12 +11,14 @@ import { createAssessment, getAssessments } from "@/lib/actions/assessments";
 import { getLeaveRequests } from "@/lib/actions/leave";
 import { getStaffById } from "@/lib/actions/staff";
 import { createTrainingRecord, getTrainingRecords } from "@/lib/actions/training";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaffProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [person, leaves, assessments, trainingRecords] = await Promise.all([
+  const [currentUser, person, leaves, assessments, trainingRecords] = await Promise.all([
+    getSessionUser(),
     getStaffById(id),
     getLeaveRequests(id),
     getAssessments(id),
@@ -29,7 +32,12 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
       <PageHeader
         title={person.full_name}
         description={`${person.position ?? "Staff"} · ${person.department?.name ?? "Unassigned"}`}
-        actions={<StaffProfileActions staff={person} />}
+        actions={
+          <StaffProfileActions
+            canResetPassword={currentUser?.role === "admin" || currentUser?.role === "hr_officer"}
+            staff={person}
+          />
+        }
       />
       <div className="grid gap-5 p-5 xl:grid-cols-[0.8fr_1.2fr]">
         <Card>
@@ -42,6 +50,20 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
             <Info label="Employment" value={person.employment_type ?? ""} />
             <Info label="Phone" value={person.phone ?? ""} />
             <Info label="Email" value={person.email ?? ""} />
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3">
+              <span className="text-slate-500">Account</span>
+              {person.must_change_password ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                  <Clock className="h-3 w-3" />
+                  Awaiting first login
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                  <CheckCircle className="h-3 w-3" />
+                  Account active
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
 

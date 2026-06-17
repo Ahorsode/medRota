@@ -1,2 +1,3 @@
 [functions.escalate-leaves]
+verify_jwt = false
 schedule = "0 */6 * * *"

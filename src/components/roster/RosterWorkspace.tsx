@@ -8,7 +8,8 @@ import { RosterStatusBadge } from "@/components/roster/RosterStatusBadge";
 import { RosterToolbar } from "@/components/roster/RosterToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { autoGenerateRoster } from "@/lib/actions/rosters";
+import { autoGenerateRoster, signRoster } from "@/lib/actions/rosters";
+import type { SessionUser } from "@/lib/auth/getSessionUser";
 import { useUpdateRosterEntry, useUpdateRosterStatus } from "@/lib/hooks/useRoster";
 import type { Department, Roster, RosterEntry, ShiftCode, ShiftConfiguration, Staff } from "@/lib/types";
 import type { AutoGenerateConfig } from "@/lib/utils/autoGenerate";
@@ -21,12 +22,14 @@ export function RosterWorkspace({
   initialEntries,
   staff,
   shiftConfigurations,
+  currentUser,
 }: {
   roster: Roster;
   department: Department;
   initialEntries: RosterEntry[];
   staff: Staff[];
   shiftConfigurations: ShiftConfiguration[];
+  currentUser: SessionUser;
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [roster, setRoster] = useState(initialRoster);
@@ -66,6 +69,19 @@ export function RosterWorkspace({
     toast.success(`Roster generated: ${result.entries.length} entries created across ${days.length} days.`);
   }
 
+  async function handleSign(signerRole: "hod" | "director") {
+    const signerName = currentUser.staffRecord?.full_name ?? currentUser.email;
+    const result = await signRoster(roster.id, signerRole, currentUser.id, signerName);
+
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+
+    setRoster(result);
+    toast.success(signerRole === "hod" ? "Roster signed by HOD" : "Roster countersigned");
+  }
+
   return (
     <div className="space-y-4 p-5">
       <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
@@ -85,6 +101,7 @@ export function RosterWorkspace({
           department={department}
           staff={staff}
           entries={entries}
+          userRole={currentUser.role}
           onStatusChange={(status) =>
             setRoster((current) => ({
               ...current,
@@ -93,6 +110,7 @@ export function RosterWorkspace({
             }))
           }
           onPersistStatus={(status) => updateStatus.mutate({ id: roster.id, status })}
+          onSign={(signerRole) => void handleSign(signerRole)}
           onAutoGenerate={() => setAutoGenOpen(true)}
         />
       </div>

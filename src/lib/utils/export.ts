@@ -15,6 +15,10 @@ interface ExportPayload {
   entries: RosterEntry[];
 }
 
+type AutoTableDocument = jsPDF & {
+  lastAutoTable?: false | { finalY?: number };
+};
+
 export function exportRosterToPdf({ roster, department, staff, entries }: ExportPayload) {
   const days = getMonthDays(roster.year, roster.month);
   const entryMap = buildEntryMap(entries);
@@ -53,6 +57,38 @@ export function exportRosterToPdf({ roster, department, staff, entries }: Export
       }
     },
   });
+
+  const autoTableDoc = doc as AutoTableDocument;
+  const tableEndY = autoTableDoc.lastAutoTable && typeof autoTableDoc.lastAutoTable === "object" ? autoTableDoc.lastAutoTable.finalY ?? 76 : 76;
+  let sigY = tableEndY + 18;
+  if (sigY + 42 > doc.internal.pageSize.height - 36) {
+    doc.addPage();
+    sigY = 40;
+  }
+
+  const signatures = roster.signatures ?? [];
+  const hodSig = signatures.find((signature) => signature.role === "hod");
+  const directorSig = signatures.find((signature) => signature.role === "director");
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("AUTHORISATION", 40, sigY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+
+  doc.rect(40, sigY + 8, 230, 34);
+  doc.text("Department Head:", 48, sigY + 20);
+  doc.setFont("helvetica", "bold");
+  doc.text(hodSig?.name ?? "___________________", 48, sigY + 31);
+  doc.setFont("helvetica", "normal");
+  doc.text(hodSig?.signed_at ? new Date(hodSig.signed_at).toLocaleDateString() : "Date: ___________", 160, sigY + 31);
+
+  doc.rect(290, sigY + 8, 230, 34);
+  doc.text("Medical Director:", 298, sigY + 20);
+  doc.setFont("helvetica", "bold");
+  doc.text(directorSig?.name ?? "___________________", 298, sigY + 31);
+  doc.setFont("helvetica", "normal");
+  doc.text(directorSig?.signed_at ? new Date(directorSig.signed_at).toLocaleDateString() : "Date: ___________", 410, sigY + 31);
 
   const footerY = doc.internal.pageSize.height - 36;
   doc.setFontSize(8);

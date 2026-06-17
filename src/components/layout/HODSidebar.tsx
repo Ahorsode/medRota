@@ -4,12 +4,12 @@ import {
   ArrowLeftRight,
   BarChart3,
   BookOpenCheck,
-  BriefcaseMedical,
   CalendarDays,
   CalendarOff,
   Clock,
   LayoutDashboard,
   MessageSquare,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { DashboardSidebar, type DashboardNavItem } from "@/components/layout/DashboardSidebar";
@@ -25,7 +25,7 @@ const items: DashboardNavItem[] = [
   { href: "/dashboard/handover", label: "Handover Reports", icon: BookOpenCheck },
   { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   { href: "/dashboard/reports", label: "Department Reports", icon: BarChart3 },
-  { href: "/dashboard/locum-board", label: "Locum Board", icon: BriefcaseMedical },
+  { href: "/dashboard/locum-board", label: "Locum Board", icon: UserCheck },
 ];
 
 export function HODSidebar({ user }: { user: SessionUser }) {

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createStaff } from "@/lib/actions/staff";
 import type { Department, Staff } from "@/lib/types";
 
 const staffSchema = z.object({
@@ -16,7 +17,8 @@ const staffSchema = z.object({
   department_id: z.string().min(1, "Department is required"),
   employment_type: z.string().min(1, "Employment type is required"),
   phone: z.string().optional(),
-  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email"),
+  role: z.enum(["staff", "doctor", "nurse", "department_head", "hr_officer", "medical_director", "admin"]),
 });
 
 type StaffFormValues = z.infer<typeof staffSchema>;
@@ -26,7 +28,7 @@ export function StaffForm({
   onAdd,
 }: {
   departments: Department[];
-  onAdd: (staff: Staff) => void;
+  onAdd?: (staff: Staff) => void;
 }) {
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
@@ -39,52 +41,82 @@ export function StaffForm({
       employment_type: "Full-time",
       phone: "",
       email: "",
+      role: "staff",
     },
   });
 
   return (
     <form
       className="grid gap-3 md:grid-cols-4"
-      onSubmit={form.handleSubmit((values) => {
-        const newStaff: Staff = {
-          id: `staff-${values.staff_number.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-          hospital_id: departments.find((department) => department.id === values.department_id)?.hospital_id ?? "",
+      onSubmit={form.handleSubmit(async (values) => {
+        const result = await createStaff({
           department_id: values.department_id,
-          user_id: null,
-          staff_number: values.staff_number,
           full_name: values.full_name,
+          staff_number: values.staff_number,
           rank: values.rank,
           position: values.position,
           employment_type: values.employment_type,
-          phone: values.phone || null,
-          email: values.email || null,
-          is_active: true,
-          created_at: "2026-06-12T00:00:00.000Z",
-        };
-        onAdd(newStaff);
-        form.reset();
-        toast.success("Staff member added");
+          phone: values.phone || undefined,
+          email: values.email,
+          role: values.role,
+        });
+
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+
+        onAdd?.(result);
+        form.reset({
+          full_name: "",
+          staff_number: "",
+          rank: "",
+          position: "",
+          department_id: departments[0]?.id ?? "",
+          employment_type: "Full-time",
+          phone: "",
+          email: "",
+          role: "staff",
+        });
+        toast.success(
+          `${result.full_name} added. Login email: ${values.email} - Temporary password: ${values.staff_number}`,
+          { duration: 10000 },
+        );
       })}
     >
-      <Input placeholder="Full name" {...form.register("full_name")} />
-      <Input placeholder="Staff number" {...form.register("staff_number")} />
-      <Input placeholder="Rank" {...form.register("rank")} />
-      <Input placeholder="Position" {...form.register("position")} />
-      <select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" {...form.register("department_id")}>
+      <Input aria-label="Full name" placeholder="Full name" {...form.register("full_name")} />
+      <Input aria-label="Staff number" placeholder="Staff number" {...form.register("staff_number")} />
+      <Input aria-label="Rank" placeholder="Rank" {...form.register("rank")} />
+      <Input aria-label="Position" placeholder="Position" {...form.register("position")} />
+      <select aria-label="Department" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" {...form.register("department_id")}>
         {departments.map((department) => (
           <option key={department.id} value={department.id}>
             {department.name}
           </option>
         ))}
       </select>
-      <select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" {...form.register("employment_type")}>
+      <select aria-label="Employment type" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" {...form.register("employment_type")}>
         <option>Full-time</option>
         <option>Part-time</option>
         <option>Locum</option>
       </select>
-      <Input placeholder="Phone" {...form.register("phone")} />
-      <Input placeholder="Email" type="email" {...form.register("email")} />
-      <Button type="submit" disabled={form.formState.isSubmitting}>
+      <Input aria-label="Phone" placeholder="Phone" {...form.register("phone")} />
+      <Input aria-label="Email" placeholder="Email" type="email" {...form.register("email")} />
+      <select aria-label="System role" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm md:col-span-2" {...form.register("role")}>
+        <option value="staff">Staff</option>
+        <option value="doctor">Doctor</option>
+        <option value="nurse">Nurse</option>
+        <option value="department_head">Department Head</option>
+        <option value="hr_officer">HR Officer</option>
+        <option value="medical_director">Medical Director</option>
+        <option value="admin">Administrator</option>
+      </select>
+      {Object.values(form.formState.errors)[0]?.message ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 md:col-span-4">
+          {Object.values(form.formState.errors)[0]?.message}
+        </p>
+      ) : null}
+      <Button className="md:col-span-2" type="submit" disabled={form.formState.isSubmitting}>
         Add Staff
       </Button>
     </form>

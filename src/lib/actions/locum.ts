@@ -2,66 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/actions/audit";
+import { serializeLocumShift } from "@/lib/actions/serializers";
 import { prisma } from "@/lib/prisma";
-import type { LocumShift } from "@/lib/types";
 
 function toDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
-}
-
-function dateOnly(value: Date | string | null | undefined) {
-  return value instanceof Date ? value.toISOString().slice(0, 10) : value ?? "";
-}
-
-function serializeLocumShift(shift: {
-  id: string;
-  department_id: string | null;
-  shift_date: Date | string;
-  shift_code: string;
-  requirements: string | null;
-  status: string;
-  filled_by: string | null;
-  posted_by: string | null;
-  created_at: Date | string;
-  department?: { id: string; name: string } | null;
-  filled_staff?: { id: string; full_name: string } | null;
-}): LocumShift {
-  return {
-    ...shift,
-    shift_date: dateOnly(shift.shift_date),
-    shift_code: shift.shift_code as LocumShift["shift_code"],
-    status: shift.status as LocumShift["status"],
-    created_at: shift.created_at instanceof Date ? shift.created_at.toISOString() : shift.created_at,
-    department: shift.department
-      ? {
-          id: shift.department.id,
-          name: shift.department.name,
-          hospital_id: null,
-          description: null,
-          is_active: true,
-          department_type: "department",
-          parent_id: null,
-          created_at: "",
-        }
-      : null,
-    filled_staff: shift.filled_staff
-      ? {
-          id: shift.filled_staff.id,
-          full_name: shift.filled_staff.full_name,
-          hospital_id: null,
-          department_id: null,
-          user_id: null,
-          staff_number: null,
-          rank: null,
-          position: null,
-          employment_type: null,
-          phone: null,
-          email: null,
-          is_active: true,
-          created_at: "",
-        }
-      : null,
-  };
 }
 
 export async function getLocumShifts(departmentId?: string, status?: "open" | "filled" | "cancelled") {
@@ -72,11 +17,12 @@ export async function getLocumShifts(departmentId?: string, status?: "open" | "f
         ...(status ? { status } : {}),
       },
       include: {
-        department: { select: { id: true, name: true } },
-        filled_staff: { select: { id: true, full_name: true } },
+        department: true,
+        filled_staff: { include: { department: true } },
       },
       orderBy: [{ shift_date: "asc" }, { created_at: "desc" }],
     });
+
     return shifts.map(serializeLocumShift);
   } catch {
     return [];
@@ -100,16 +46,21 @@ export async function postLocumShift(data: {
         posted_by: data.posted_by,
       },
       include: {
-        department: { select: { id: true, name: true } },
-        filled_staff: { select: { id: true, full_name: true } },
+        department: true,
+        filled_staff: { include: { department: true } },
       },
     });
+
     await logAudit({
       userId: data.posted_by,
       action: "locum_shift_posted",
       entityType: "locum_shift",
       entityId: shift.id,
-      newValue: { department_id: data.department_id, shift_date: data.shift_date, shift_code: data.shift_code },
+      newValue: {
+        department_id: data.department_id,
+        shift_date: data.shift_date,
+        shift_code: data.shift_code,
+      },
     });
     revalidatePath("/dashboard/locum-board");
     return serializeLocumShift(shift);
@@ -160,17 +111,55 @@ export async function acceptLocumShift(id: string, staffId: string) {
       }),
     ]);
 
+    const shift = await prisma.locumShift.findUnique({
+      where: { id },
+      include: {
+        department: true,
+        filled_staff: { include: { department: true } },
+      },
+    });
+
     await logAudit({
       staffId,
       action: "locum_shift_accepted",
       entityType: "locum_shift",
       entityId: id,
-      newValue: { status: "filled", staffId },
+      oldValue: { status: existing.status },
+      newValue: { status: "filled", staff_id: staffId },
     });
     revalidatePath("/dashboard/locum-board");
     revalidatePath("/dashboard/rosters");
-    return { ok: true };
+    return shift ? serializeLocumShift(shift) : { error: "Locum shift not found after update" };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to accept locum shift" };
+  }
+}
+
+export async function cancelLocumShift(id: string, cancelledBy?: string) {
+  try {
+    const existing = await prisma.locumShift.findUnique({ where: { id } });
+    if (!existing) return { error: "Locum shift not found" };
+
+    const shift = await prisma.locumShift.update({
+      where: { id },
+      data: { status: "cancelled" },
+      include: {
+        department: true,
+        filled_staff: { include: { department: true } },
+      },
+    });
+
+    await logAudit({
+      userId: cancelledBy,
+      action: "locum_shift_cancelled",
+      entityType: "locum_shift",
+      entityId: id,
+      oldValue: { status: existing.status },
+      newValue: { status: "cancelled" },
+    });
+    revalidatePath("/dashboard/locum-board");
+    return serializeLocumShift(shift);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Unable to cancel locum shift" };
   }
 }
