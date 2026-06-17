@@ -2,44 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MouseEvent, useState } from "react";
+import { type MouseEvent, useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import {
-  ArrowLeftRight,
-  BarChart3,
-  BookOpenCheck,
-  Building2,
-  CalendarDays,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  Home,
-  MessageSquare,
-  Settings,
-  Stethoscope,
-  Users,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Stethoscope, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/lib/context/sidebar";
 import { cn } from "@/lib/utils/cn";
 
-const items = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/dashboard/departments", label: "Departments", icon: Building2 },
-  { href: "/dashboard/staff", label: "Staff Management", icon: Users },
-  { href: "/dashboard/rosters", label: "Duty Rosters", icon: ClipboardList },
-  { href: "/dashboard/attendance", label: "Attendance", icon: Clock },
-  { href: "/dashboard/leave", label: "Leave Management", icon: CalendarDays },
-  { href: "/dashboard/swaps", label: "Shift Swaps", icon: ArrowLeftRight },
-  { href: "/dashboard/handover", label: "Handover Reports", icon: BookOpenCheck },
-  { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
-  { href: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
+export type DashboardNavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
 
-export function Sidebar() {
+export function DashboardSidebar({
+  items,
+  subtitle = "SDA Hospital, Koforidua",
+  badge,
+}: {
+  items: DashboardNavItem[];
+  subtitle?: string;
+  badge?: string;
+}) {
   const pathname = usePathname();
   const { mobileOpen, setMobileOpen, collapsed, setCollapsed } = useSidebar();
   const [hovered, setHovered] = useState(false);
@@ -72,7 +56,7 @@ export function Sidebar() {
         )}
       >
         <div
-          className={cn("flex h-20 items-center gap-3 border-b border-white/10 px-4", !expanded && "lg:justify-center lg:px-2")}
+          className={cn("flex min-h-20 items-center gap-3 border-b border-white/10 px-4 py-4", !expanded && "lg:justify-center lg:px-2")}
           onClick={toggleFromEmptySpace}
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#A8DADC] text-[#1A2B4A]">
@@ -80,7 +64,12 @@ export function Sidebar() {
           </div>
           <div className={cn("min-w-0", !expanded && "lg:hidden")}>
             <p className="text-lg font-extrabold">MedRota</p>
-            <p className="truncate text-xs text-white/65">SDA Hospital, Koforidua</p>
+            <p className="truncate text-xs text-white/65">{subtitle}</p>
+            {badge ? (
+              <p className="mt-2 w-fit max-w-full truncate rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-[#A8DADC]">
+                {badge}
+              </p>
+            ) : null}
           </div>
           <Button
             variant="ghost"
@@ -93,7 +82,7 @@ export function Sidebar() {
           </Button>
         </div>
         <Tooltip.Provider delayDuration={150}>
-          <nav className="flex flex-1 flex-col gap-1 px-3 py-5" onClick={toggleFromEmptySpace}>
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-5" onClick={toggleFromEmptySpace}>
             {items.map((item) => {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
@@ -108,7 +97,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className={cn(!expanded && "lg:hidden")}>{item.label}</span>
+                  <span className={cn("truncate", !expanded && "lg:hidden")}>{item.label}</span>
                 </Link>
               );
 

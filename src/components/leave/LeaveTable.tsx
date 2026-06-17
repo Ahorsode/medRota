@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { LeaveStatusBadge } from "@/components/staff/LeaveStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Department, LeaveRequest, LeaveStatus, Staff } from "@/lib/types";
@@ -43,7 +43,7 @@ export function LeaveTable({
                 <TableCell>{leave.start_date}</TableCell>
                 <TableCell>{leave.end_date}</TableCell>
                 <TableCell>
-                  <Badge variant={leave.status === "approved" ? "success" : leave.status === "pending" ? "warning" : "danger"}>{leave.status}</Badge>
+                  <LeaveStatusBadge status={leave.status} />
                 </TableCell>
                 <TableCell className="space-x-2 text-right">
                   <Button
@@ -60,7 +60,7 @@ export function LeaveTable({
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      onStatusChange(leave.id, "rejected");
+                      onStatusChange(leave.id, "rejected_hr");
                       toast.error("Leave rejected");
                     }}
                   >

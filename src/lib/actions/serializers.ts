@@ -29,10 +29,16 @@ type DbStaff = Omit<Staff, "created_at" | "department" | "leave_requests" | "att
   assessments?: DbStaffAssessment[];
   training_records?: DbTrainingRecord[];
 };
-type DbRoster = Omit<Roster, "status" | "created_at" | "published_at" | "department" | "entries"> & {
+type DbRoster = Omit<
+  Roster,
+  "status" | "created_at" | "published_at" | "department" | "entries" | "signatures" | "hod_signed_at" | "director_signed_at"
+> & {
   status: string;
   created_at: Dateish;
   published_at: Dateish;
+  signatures?: unknown;
+  hod_signed_at?: Dateish;
+  director_signed_at?: Dateish;
   department?: DbDepartment | null;
   entries?: DbRosterEntry[];
 };
@@ -47,11 +53,15 @@ type DbShiftConfiguration = Omit<ShiftConfiguration, "shift_code" | "start_time"
   start_time: Dateish;
   end_time: Dateish;
 };
-type DbLeaveRequest = Omit<LeaveRequest, "status" | "start_date" | "end_date" | "requested_at" | "reviewed_at" | "staff"> & {
+type DbLeaveRequest = Omit<
+  LeaveRequest,
+  "status" | "start_date" | "end_date" | "requested_at" | "hod_reviewed_at" | "reviewed_at" | "staff"
+> & {
   status: string;
   start_date: Dateish;
   end_date: Dateish;
   requested_at: Dateish;
+  hod_reviewed_at: Dateish;
   reviewed_at: Dateish;
   staff?: DbStaff | null;
 };
@@ -111,6 +121,24 @@ function dateOnly(value: Dateish) {
   return value instanceof Date ? value.toISOString().slice(0, 10) : value ?? "";
 }
 
+function signatureList(value: unknown): Roster["signatures"] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is { role: string; name: string; signed_at: string } => {
+      return (
+        typeof item === "object" &&
+        item !== null &&
+        "role" in item &&
+        "name" in item &&
+        "signed_at" in item &&
+        typeof item.role === "string" &&
+        typeof item.name === "string" &&
+        typeof item.signed_at === "string"
+      );
+    });
+}
+
 export function serializeDepartment(department: DbDepartment): Department {
   return {
     ...department,
@@ -136,8 +164,11 @@ export function serializeRoster(roster: DbRoster): Roster {
   return {
     ...roster,
     status: roster.status as Roster["status"],
+    signatures: signatureList(roster.signatures),
     created_at: dateTime(roster.created_at) ?? "",
     published_at: dateTime(roster.published_at),
+    hod_signed_at: dateTime(roster.hod_signed_at),
+    director_signed_at: dateTime(roster.director_signed_at),
     department: roster.department ? serializeDepartment(roster.department) : undefined,
     entries: roster.entries?.map(serializeRosterEntry),
   };
@@ -169,6 +200,7 @@ export function serializeLeaveRequest(request: DbLeaveRequest): LeaveRequest {
     start_date: dateOnly(request.start_date),
     end_date: dateOnly(request.end_date),
     requested_at: dateTime(request.requested_at) ?? "",
+    hod_reviewed_at: dateTime(request.hod_reviewed_at),
     reviewed_at: dateTime(request.reviewed_at),
     staff: request.staff ? serializeStaff(request.staff) : undefined,
   };

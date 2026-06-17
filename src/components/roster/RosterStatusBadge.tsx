@@ -1,10 +1,12 @@
 import type { RosterStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
-const variants: Record<RosterStatus, "default" | "warning" | "blue" | "success"> = {
+const variants: Record<RosterStatus, "default" | "warning" | "blue" | "success" | "purple"> = {
   draft: "default",
   submitted: "warning",
   approved: "blue",
+  hod_signed: "purple",
+  director_signed: "blue",
   published: "success",
 };
 

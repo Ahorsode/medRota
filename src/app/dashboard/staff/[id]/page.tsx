@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
+import { LeaveStatusBadge } from "@/components/staff/LeaveStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +59,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
                       {leave.start_date} to {leave.end_date}
                     </p>
                   </div>
-                  <Badge variant={leave.status === "approved" ? "success" : leave.status === "pending" ? "warning" : "danger"}>{leave.status}</Badge>
+                  <LeaveStatusBadge status={leave.status} />
                 </div>
               ))
             ) : (

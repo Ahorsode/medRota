@@ -33,6 +33,7 @@ export async function clockIn(staffId: string, shiftDate: string) {
       update: { clock_in: new Date() },
     });
     revalidatePath("/dashboard/attendance");
+    revalidatePath("/dashboard/my-attendance");
     return serializeAttendanceRecord(record);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to clock in" };
@@ -46,6 +47,7 @@ export async function clockOut(staffId: string, shiftDate: string) {
       data: { clock_out: new Date() },
     });
     revalidatePath("/dashboard/attendance");
+    revalidatePath("/dashboard/my-attendance");
     return serializeAttendanceRecord(record);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to clock out" };
@@ -60,6 +62,7 @@ export async function markAbsent(staffId: string, shiftDate: string, notes?: str
       update: { status: "absent", notes },
     });
     revalidatePath("/dashboard/attendance");
+    revalidatePath("/dashboard/my-attendance");
     return serializeAttendanceRecord(record);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to mark absent" };

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/actions/audit";
 import { prisma } from "@/lib/prisma";
 import { serializeStaff } from "@/lib/actions/serializers";
 
@@ -71,7 +72,15 @@ export async function updateStaff(
 ) {
   try {
     const staff = await prisma.staff.update({ where: { id }, data });
+    await logAudit({
+      staffId: id,
+      action: "staff_updated",
+      entityType: "staff",
+      entityId: id,
+      newValue: data,
+    });
     revalidatePath("/dashboard/staff");
+    revalidatePath("/dashboard/my-profile");
     return serializeStaff(staff);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to update staff member" };

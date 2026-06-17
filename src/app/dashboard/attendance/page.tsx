@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { clockIn, clockOut, getAttendanceRecords, markAbsent } from "@/lib/actions/attendance";
 import { getDepartments } from "@/lib/actions/departments";
 import { getStaff } from "@/lib/actions/staff";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
 import { formatDateLabel } from "@/lib/utils/dates";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,17 @@ function timeLabel(value: string | null) {
 }
 
 export default async function AttendancePage() {
-  const [departments, staff, records] = await Promise.all([getDepartments(), getStaff(), getAttendanceRecords(undefined, undefined, today())]);
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard/my-attendance");
+
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
+  const [allDepartments, staff, records] = await Promise.all([
+    getDepartments(),
+    getStaff(departmentFilter),
+    getAttendanceRecords(undefined, departmentFilter, today()),
+  ]);
+  const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
 
   async function markAbsentAction(formData: FormData) {
     "use server";

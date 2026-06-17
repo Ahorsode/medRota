@@ -6,17 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDepartments } from "@/lib/actions/departments";
 import { getMessages, markMessageRead, sendMessage } from "@/lib/actions/messages";
 import { getStaff } from "@/lib/actions/staff";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
-  const [staff, departments] = await Promise.all([getStaff(), getDepartments()]);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentStaff = user ? staff.find((person) => person.user_id === user.id) ?? staff[0] ?? null : staff[0] ?? null;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
+  const [staff, allDepartments] = await Promise.all([getStaff(departmentFilter), getDepartments()]);
+  const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
+  const currentStaff = user.staffRecord ? staff.find((person) => person.id === user.staffRecord?.id) ?? null : staff[0] ?? null;
   const messages = currentStaff ? await getMessages(currentStaff.id) : [];
 
   async function compose(formData: FormData) {

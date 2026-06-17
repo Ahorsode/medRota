@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { acknowledgeHandover, createHandoverReport, getHandoverReports } from "@/lib/actions/handover";
 import { getDepartments } from "@/lib/actions/departments";
 import { getStaff } from "@/lib/actions/staff";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
 import { formatDateLabel } from "@/lib/utils/dates";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -16,16 +17,14 @@ function today() {
 }
 
 export default async function HandoverPage() {
-  const [departments, staff] = await Promise.all([getDepartments(), getStaff()]);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const currentUserStaff = user ? staff.find((person) => person.user_id === user.id) : null;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : user.staffRecord?.department_id || undefined;
+  const [allDepartments, staff] = await Promise.all([getDepartments(), getStaff(departmentFilter)]);
+  const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
   const activeDepartment =
-    (currentUserStaff?.department_id
-      ? departments.find((department) => department.id === currentUserStaff.department_id)
-      : null) ??
+    (departmentFilter ? departments.find((department) => department.id === departmentFilter) : null) ??
     departments[0] ??
     null;
   const reports = activeDepartment ? await getHandoverReports(activeDepartment.id, today()) : [];

@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getShiftSwaps, reviewSwap } from "@/lib/actions/swaps";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function SwapsPage() {
-  const shiftSwaps = await getShiftSwaps();
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard/my-swaps");
+
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
+  const shiftSwaps = await getShiftSwaps(departmentFilter);
 
   async function review(formData: FormData) {
     "use server";

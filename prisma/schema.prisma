@@ -9,12 +9,13 @@ datasource db {
 }
 
 model Hospital {
-  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  location    String?
-  created_at  DateTime     @default(now()) @db.Timestamptz(6)
-  departments Department[]
-  staff       Staff[]
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  location        String?
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  departments     Department[]
+  staff           Staff[]
+  allowance_rates AllowanceRate[]
 
   @@map("hospitals")
   @@schema("public")
@@ -38,6 +39,7 @@ model Department {
   user_roles           UserRole[]
   messages             Message[]
   handover_reports     HandoverReport[]
+  locum_shifts         LocumShift[]
 
   @@map("departments")
   @@schema("public")
@@ -87,23 +89,27 @@ model Staff {
   assessments           StaffAssessment[]
   training_records      TrainingRecord[]
   login_sessions        LoginSession[]
+  locum_filled_shifts   LocumShift[]       @relation("LocumFilledBy")
 
   @@map("staff")
   @@schema("public")
 }
 
 model Roster {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  department_id String?       @db.Uuid
-  month         Int
-  year          Int
-  status        String        @default("draft")
-  created_by    String?       @db.Uuid
-  approved_by   String?       @db.Uuid
-  created_at    DateTime      @default(now()) @db.Timestamptz(6)
-  published_at  DateTime?     @db.Timestamptz(6)
-  department    Department?   @relation(fields: [department_id], references: [id], onDelete: Cascade)
-  entries       RosterEntry[]
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id      String?       @db.Uuid
+  month              Int
+  year               Int
+  status             String        @default("draft")
+  created_by         String?       @db.Uuid
+  approved_by        String?       @db.Uuid
+  signatures         Json          @default("[]") @db.JsonB
+  hod_signed_at      DateTime?     @db.Timestamptz(6)
+  director_signed_at DateTime?     @db.Timestamptz(6)
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  published_at       DateTime?     @db.Timestamptz(6)
+  department         Department?   @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  entries            RosterEntry[]
 
   @@unique([department_id, month, year])
   @@map("rosters")
@@ -111,22 +117,22 @@ model Roster {
 }
 
 model RosterEntry {
-  id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roster_id                 String?             @db.Uuid
-  staff_id                  String?             @db.Uuid
-  shift_date                DateTime            @db.Date
-  shift_code                String
-  shift_config_id           String?             @db.Uuid
-  notes                     String?
-  is_leave                  Boolean             @default(false)
-  leave_type                String?
-  created_at                DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at                DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
-  roster                    Roster?             @relation(fields: [roster_id], references: [id], onDelete: Cascade)
-  staff                     Staff?              @relation(fields: [staff_id], references: [id], onDelete: Cascade)
-  shift_config              ShiftConfiguration? @relation(fields: [shift_config_id], references: [id], onDelete: SetNull)
-  swap_as_requester         ShiftSwap[]         @relation("SwapRequesterEntry")
-  swap_as_replacement       ShiftSwap[]         @relation("SwapReplacementEntry")
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roster_id           String?             @db.Uuid
+  staff_id            String?             @db.Uuid
+  shift_date          DateTime            @db.Date
+  shift_code          String
+  shift_config_id     String?             @db.Uuid
+  notes               String?
+  is_leave            Boolean             @default(false)
+  leave_type          String?
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
+  roster              Roster?             @relation(fields: [roster_id], references: [id], onDelete: Cascade)
+  staff               Staff?              @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  shift_config        ShiftConfiguration? @relation(fields: [shift_config_id], references: [id], onDelete: SetNull)
+  swap_as_requester   ShiftSwap[]         @relation("SwapRequesterEntry")
+  swap_as_replacement ShiftSwap[]         @relation("SwapReplacementEntry")
 
   @@unique([roster_id, staff_id, shift_date])
   @@map("roster_entries")
@@ -134,18 +140,21 @@ model RosterEntry {
 }
 
 model LeaveRequest {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  staff_id     String?   @db.Uuid
-  leave_type   String
-  start_date   DateTime  @db.Date
-  end_date     DateTime  @db.Date
-  reason       String?
-  status       String    @default("pending")
-  requested_at DateTime  @default(now()) @db.Timestamptz(6)
-  reviewed_by  String?   @db.Uuid
-  reviewed_at  DateTime? @db.Timestamptz(6)
-  notes        String?
-  staff        Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id        String?   @db.Uuid
+  leave_type      String
+  start_date      DateTime  @db.Date
+  end_date        DateTime  @db.Date
+  reason          String?
+  status          String    @default("pending_hod")
+  requested_at    DateTime  @default(now()) @db.Timestamptz(6)
+  hod_reviewed_by String?   @db.Uuid
+  hod_reviewed_at DateTime? @db.Timestamptz(6)
+  hod_notes       String?
+  reviewed_by     String?   @db.Uuid
+  reviewed_at     DateTime? @db.Timestamptz(6)
+  notes           String?
+  staff           Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
 
   @@map("leave_requests")
   @@schema("public")
@@ -249,19 +258,19 @@ model HandoverReport {
 }
 
 model StaffAssessment {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  staff_id               String?   @db.Uuid
-  assessed_by            String?   @db.Uuid
-  assessment_date        DateTime  @db.Date
-  period                 String
-  competency_score       Int?
-  efficiency_score       Int?
-  professionalism_score  Int?
-  ethical_score          Int?
-  overall_score          Float?
-  comments               String?
-  created_at             DateTime  @default(now()) @db.Timestamptz(6)
-  staff                  Staff?    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staff_id              String?  @db.Uuid
+  assessed_by           String?  @db.Uuid
+  assessment_date       DateTime @db.Date
+  period                String
+  competency_score      Int?
+  efficiency_score      Int?
+  professionalism_score Int?
+  ethical_score         Int?
+  overall_score         Float?
+  comments              String?
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  staff                 Staff?   @relation(fields: [staff_id], references: [id], onDelete: Cascade)
 
   @@map("staff_assessments")
   @@schema("public")
@@ -296,5 +305,51 @@ model LoginSession {
   staff            Staff?    @relation(fields: [staff_id], references: [id], onDelete: SetNull)
 
   @@map("login_sessions")
+  @@schema("public")
+}
+
+model AllowanceRate {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hospital_id    String?   @db.Uuid
+  shift_code     String
+  rate_ghs       Decimal   @db.Decimal(10, 2)
+  effective_from DateTime  @db.Date
+  notes          String?
+  hospital       Hospital? @relation(fields: [hospital_id], references: [id])
+
+  @@map("allowance_rates")
+  @@schema("public")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String?  @db.Uuid
+  staff_id    String?  @db.Uuid
+  action      String
+  entity_type String
+  entity_id   String?  @db.Uuid
+  old_value   Json?    @db.JsonB
+  new_value   Json?    @db.JsonB
+  ip_address  String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("audit_log")
+  @@schema("public")
+}
+
+model LocumShift {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id String?     @db.Uuid
+  shift_date    DateTime    @db.Date
+  shift_code    String
+  requirements  String?
+  status        String      @default("open")
+  filled_by     String?     @db.Uuid
+  posted_by     String?     @db.Uuid
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  department    Department? @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  filled_staff  Staff?      @relation("LocumFilledBy", fields: [filled_by], references: [id], onDelete: SetNull)
+
+  @@map("locum_shifts")
   @@schema("public")
 }

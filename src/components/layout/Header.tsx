@@ -6,10 +6,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { closeLoginSession } from "@/lib/actions/sessions";
+import type { SessionUser } from "@/lib/auth/getSessionUser";
 import { useSidebar } from "@/lib/context/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
-export function Header() {
+export function Header({ user }: { user?: SessionUser }) {
   const router = useRouter();
   const { setMobileOpen } = useSidebar();
 
@@ -40,6 +41,12 @@ export function Header() {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {user ? (
+          <div className="hidden min-w-0 text-right sm:block">
+            <p className="truncate text-sm font-bold text-slate-950">{user.staffRecord?.full_name ?? user.email}</p>
+            <p className="truncate text-xs capitalize text-slate-500">{user.role.replace("_", " ")}</p>
+          </div>
+        ) : null}
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="h-5 w-5" />
         </Button>

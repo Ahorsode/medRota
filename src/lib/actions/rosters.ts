@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/actions/audit";
 import { prisma } from "@/lib/prisma";
 import {
   serializeLeaveRequest,
@@ -16,13 +17,34 @@ function toDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-export async function getRosters() {
+export async function getRosters(departmentId?: string) {
   try {
     const rosters = await prisma.roster.findMany({
+      where: {
+        ...(departmentId ? { department_id: departmentId } : {}),
+      },
       include: { department: true, _count: { select: { entries: true } } },
       orderBy: [{ year: "desc" }, { month: "desc" }],
     });
     return rosters.map(serializeRoster);
+  } catch {
+    return [];
+  }
+}
+
+export async function getRosterEntriesForStaff(staffId: string, year: number, month: number) {
+  try {
+    const monthStart = new Date(Date.UTC(year, month - 1, 1));
+    const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+    const entries = await prisma.rosterEntry.findMany({
+      where: {
+        staff_id: staffId,
+        shift_date: { gte: monthStart, lte: monthEnd },
+      },
+      include: { shift_config: true },
+      orderBy: { shift_date: "asc" },
+    });
+    return entries.map(serializeRosterEntry);
   } catch {
     return [];
   }
@@ -131,15 +153,28 @@ export async function updateRosterEntry(
   }
 }
 
-export async function updateRosterStatus(id: string, status: "draft" | "submitted" | "approved" | "published", approvedBy?: string) {
+export async function updateRosterStatus(
+  id: string,
+  status: "draft" | "submitted" | "approved" | "hod_signed" | "director_signed" | "published",
+  approvedBy?: string,
+) {
   try {
     const roster = await prisma.roster.update({
       where: { id },
       data: {
         status,
-        approved_by: status === "approved" || status === "published" ? approvedBy ?? null : null,
-        published_at: status === "published" ? new Date() : null,
+        approved_by: ["approved", "hod_signed", "director_signed", "published"].includes(status) ? approvedBy ?? null : null,
+        hod_signed_at: status === "hod_signed" ? new Date() : undefined,
+        director_signed_at: status === "director_signed" ? new Date() : undefined,
+        published_at: status === "published" || status === "director_signed" ? new Date() : null,
       },
+    });
+    await logAudit({
+      userId: approvedBy,
+      action: "roster_status_updated",
+      entityType: "roster",
+      entityId: id,
+      newValue: { status },
     });
     revalidatePath("/dashboard/rosters");
     return serializeRoster(roster);

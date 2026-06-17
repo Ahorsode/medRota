@@ -21,7 +21,7 @@ export function useCreateLeave() {
 export function useReviewLeave() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status, reviewedBy, notes }: { id: string; status: "approved" | "rejected"; reviewedBy: string; notes?: string }) =>
+    mutationFn: ({ id, status, reviewedBy, notes }: { id: string; status: "approved" | "rejected_hr"; reviewedBy: string; notes?: string }) =>
       reviewLeaveRequest(id, status, reviewedBy, notes),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leave-requests"] }),
   });

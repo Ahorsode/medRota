@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RosterWorkspace } from "@/components/roster/RosterWorkspace";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getDepartments } from "@/lib/actions/departments";
 import { getRosterWithEntries, getShiftConfigurations } from "@/lib/actions/rosters";
 import { getStaff } from "@/lib/actions/staff";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
 import { monthNames } from "@/lib/utils/dates";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +18,17 @@ export default async function RosterEditorPage({
   params: Promise<{ deptId: string; year: string; month: string }>;
 }) {
   const { deptId, year, month } = await params;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard/my-schedule");
+  if (user.role === "department_head" && user.departmentId !== deptId) notFound();
+
   const numericYear = Number(year);
   const numericMonth = Number(month);
   const [departments, rosterData, staff, shiftConfigurations] = await Promise.all([
     getDepartments(),
     getRosterWithEntries(deptId, numericYear, numericMonth),
-    getStaff(),
+    getStaff(deptId),
     getShiftConfigurations(deptId),
   ]);
   const department = departments.find((item) => item.id === deptId);

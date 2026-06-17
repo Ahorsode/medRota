@@ -7,6 +7,9 @@ import { getDepartments } from "@/lib/actions/departments";
 import { getLeaveRequests } from "@/lib/actions/leave";
 import { getRosterEntries } from "@/lib/actions/rosters";
 import { getStaff } from "@/lib/actions/staff";
+import { getShiftAllowanceSummaryForDepartment } from "@/lib/actions/payroll";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +24,21 @@ const leaveColors: Record<string, string> = {
 };
 
 export default async function ReportsPage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard");
+
   const startDate = "2026-06-01";
   const endDate = "2026-06-30";
-  const [departments, staff, rosterEntries, leaveRequests] = await Promise.all([
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
+  const [allDepartments, staff, rosterEntries, leaveRequests, allowance] = await Promise.all([
     getDepartments(),
-    getStaff(),
-    getRosterEntries(startDate, endDate),
-    getLeaveRequests(),
+    getStaff(departmentFilter),
+    getRosterEntries(startDate, endDate, departmentFilter),
+    getLeaveRequests(undefined, departmentFilter),
+    getShiftAllowanceSummaryForDepartment(departmentFilter, 2026, 6),
   ]);
+  const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
 
   const staffing = departments.map((department) => {
     const staffIds = new Set(staff.filter((person) => person.department_id === department.id).map((person) => person.id));
@@ -80,10 +90,13 @@ export default async function ReportsPage() {
       />
       <div className="space-y-5 p-5">
         <Card>
-          <CardContent className="grid gap-3 p-5 md:grid-cols-3">
+          <CardContent className="grid gap-3 p-5 md:grid-cols-4">
             <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{startDate}</div>
             <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{endDate}</div>
-            <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">All departments</div>
+            <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{departmentFilter ? departments[0]?.name ?? "Department" : "All departments"}</div>
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+              Payroll allowance export: GHS {allowance.total}
+            </div>
           </CardContent>
         </Card>
         <ReportsCharts staffing={staffing} absenteeism={absenteeism} leave={leave} nightFairness={nightFairness} />

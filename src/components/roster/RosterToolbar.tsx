@@ -26,8 +26,9 @@ export function RosterToolbar({
   function nextStatus() {
     const transitions: Partial<Record<RosterStatus, RosterStatus>> = {
       draft: "submitted",
-      submitted: "approved",
-      approved: "published",
+      submitted: "hod_signed",
+      hod_signed: "director_signed",
+      director_signed: "published",
     };
 
     return transitions[roster.status];
@@ -36,7 +37,8 @@ export function RosterToolbar({
   const targetStatus = nextStatus();
   const workflowLabel: Partial<Record<RosterStatus, string>> = {
     submitted: "Submit for Approval",
-    approved: "Approve",
+    hod_signed: "Sign & Submit",
+    director_signed: "Director Countersign",
     published: "Publish",
   };
 

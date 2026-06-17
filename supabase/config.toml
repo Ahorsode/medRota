@@ -1,0 +1,2 @@
+[functions.escalate-leaves]
+schedule = "0 */6 * * *"

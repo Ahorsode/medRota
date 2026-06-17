@@ -1,8 +1,8 @@
 export type UUID = string;
 
-export type RosterStatus = "draft" | "submitted" | "approved" | "published";
+export type RosterStatus = "draft" | "submitted" | "approved" | "hod_signed" | "director_signed" | "published";
 export type ShiftCode = "M" | "A" | "N" | "O" | "H" | "%" | "LEAVE" | "ON_CALL";
-export type LeaveStatus = "pending" | "approved" | "rejected";
+export type LeaveStatus = "pending_hod" | "pending_hr" | "approved" | "rejected_hod" | "rejected_hr";
 export type SwapStatus = "pending" | "approved" | "rejected";
 export type DepartmentType = "department" | "unit" | "special_clinic" | "autonomous_centre";
 
@@ -69,6 +69,9 @@ export interface Roster {
   status: RosterStatus;
   created_by: UUID | null;
   approved_by: UUID | null;
+  signatures?: Array<{ role: string; name: string; signed_at: string }>;
+  hod_signed_at?: string | null;
+  director_signed_at?: string | null;
   created_at: string;
   published_at: string | null;
   department?: Department | null;
@@ -101,6 +104,9 @@ export interface LeaveRequest {
   reason: string | null;
   status: LeaveStatus;
   requested_at: string;
+  hod_reviewed_by: UUID | null;
+  hod_reviewed_at: string | null;
+  hod_notes: string | null;
   reviewed_by: UUID | null;
   reviewed_at: string | null;
   notes: string | null;
@@ -125,7 +131,7 @@ export interface ShiftSwap {
 export interface UserRole {
   id: UUID;
   user_id: UUID;
-  role: "admin" | "medical_director" | "department_head" | "doctor" | "nurse" | "hr_officer";
+  role: "admin" | "medical_director" | "department_head" | "doctor" | "nurse" | "hr_officer" | "staff";
   department_id: UUID | null;
 }
 
@@ -246,4 +252,28 @@ export interface LoginSession {
   ip_address: string | null;
   device: string | null;
   staff?: Staff | null;
+}
+
+export interface ShiftAllowanceSummary {
+  nightShifts: number;
+  holidayShifts: number;
+  weekendShifts: number;
+  nightAllowance: number;
+  holidayAllowance: number;
+  weekendAllowance: number;
+  total: number;
+}
+
+export interface LocumShift {
+  id: UUID;
+  department_id: UUID | null;
+  shift_date: string;
+  shift_code: ShiftCode;
+  requirements: string | null;
+  status: "open" | "filled" | "cancelled";
+  filled_by: UUID | null;
+  posted_by: UUID | null;
+  created_at: string;
+  department?: Department | null;
+  filled_staff?: Staff | null;
 }

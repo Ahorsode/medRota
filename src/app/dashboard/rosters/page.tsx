@@ -8,12 +8,22 @@ import { Input } from "@/components/ui/input";
 import { getDepartments } from "@/lib/actions/departments";
 import { createRoster, getRosters } from "@/lib/actions/rosters";
 import { getStaff } from "@/lib/actions/staff";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
 import { monthNames } from "@/lib/utils/dates";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function RosterOverviewPage() {
-  const [departments, rosters, staff] = await Promise.all([getDepartments(), getRosters(), getStaff()]);
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard/my-schedule");
+
+  const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
+  const userRole = user.role;
+  const userDepartmentId = user.departmentId;
+  const [allDepartments, rosters, staff] = await Promise.all([getDepartments(), getRosters(departmentFilter), getStaff(departmentFilter)]);
+  const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
 
   async function addRoster(formData: FormData) {
     "use server";
@@ -21,6 +31,7 @@ export default async function RosterOverviewPage() {
     const month = Number(formData.get("month") ?? 0);
     const year = Number(formData.get("year") ?? 0);
     if (!departmentId || !month || !year) return;
+    if (userRole === "department_head" && departmentId !== userDepartmentId) return;
     await createRoster({ department_id: departmentId, month, year });
   }
 
