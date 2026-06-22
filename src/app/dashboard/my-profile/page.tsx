@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StaffPasswordForm } from "@/components/staff/StaffPasswordForm";
+import { LoginMethodsCard } from "@/components/staff/LoginMethodsCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,14 +121,9 @@ export default async function MyProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StaffPasswordForm />
-          </CardContent>
-        </Card>
+        <div className="xl:col-span-2">
+          <LoginMethodsCard staffEmail={staff.email ?? null} />
+        </div>
       </div>
     </div>
   );

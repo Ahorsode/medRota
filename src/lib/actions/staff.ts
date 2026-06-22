@@ -68,7 +68,7 @@ export async function getStaffById(id: string) {
   }
 }
 
-export async function createStaff(data: StaffInput) {
+export async function createStaff(data: StaffInput & { login_identifier_type?: "email" | "phone" }) {
   try {
     const actor = await getSessionUser();
     if (!actor) {
@@ -78,13 +78,18 @@ export async function createStaff(data: StaffInput) {
       return { error: "You do not have permission to create staff accounts." };
     }
 
+    const identifierType = data.login_identifier_type ?? "email";
     const email = data.email?.trim();
+    const phone = data.phone?.trim();
     const staffNumber = data.staff_number.trim();
     const departmentId = data.department_id.trim();
     const role = data.role && provisionableRoles.has(data.role) ? data.role : "staff";
 
-    if (!email) {
-      return { error: "Email is required to create a staff account." };
+    if (identifierType === "email" && !email) {
+      return { error: "Email is required when using email as the login identifier." };
+    }
+    if (identifierType === "phone" && !phone) {
+      return { error: "Phone number is required when using phone as the login identifier." };
     }
     if (!staffNumber) {
       return { error: "Staff number is required to create a staff account." };
@@ -100,10 +105,13 @@ export async function createStaff(data: StaffInput) {
         : null);
 
     const admin = createAdminClient();
+    const createPayload =
+      identifierType === "phone"
+        ? { phone: phone!, password: staffNumber, phone_confirm: true }
+        : { email: email!, password: staffNumber, email_confirm: true };
+
     const { data: authResult, error: authError } = await admin.auth.admin.createUser({
-      email,
-      password: staffNumber,
-      email_confirm: true,
+      ...createPayload,
       user_metadata: {
         full_name: data.full_name,
         provisioned_by: "staff_form",
@@ -127,11 +135,12 @@ export async function createStaff(data: StaffInput) {
             rank: data.rank,
             position: data.position,
             employment_type: data.employment_type,
-            phone: data.phone,
-            email,
+            phone: phone || undefined,
+            email: email || undefined,
             staff_number: staffNumber,
             user_id: userId,
             must_change_password: true,
+            login_identifier_type: identifierType,
             invited_at: new Date(),
           },
         });
@@ -162,7 +171,9 @@ export async function createStaff(data: StaffInput) {
       entityType: "staff",
       entityId: staff.id,
       newValue: {
-        email,
+        identifier_type: identifierType,
+        email: email ?? null,
+        phone: phone ?? null,
         role,
       },
     });

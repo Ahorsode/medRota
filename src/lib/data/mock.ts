@@ -191,6 +191,7 @@ function staffMember(id: string, departmentId: string, fullName: string, rank: s
     must_change_password: false,
     invited_at: now,
     password_changed_at: now,
+    login_identifier_type: "email",
   };
 }
 

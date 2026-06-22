@@ -58,6 +58,7 @@ export interface Staff {
   must_change_password: boolean;
   invited_at: string | null;
   password_changed_at: string | null;
+  login_identifier_type: "email" | "phone";
   department?: Department | null;
   leave_requests?: LeaveRequest[];
   attendance_records?: AttendanceRecord[];
@@ -343,5 +344,15 @@ export interface Notification {
   is_read: boolean;
   read_at: string | null;
   link: string | null;
+  created_at: string;
+}
+
+export interface AccessRequest {
+  id: UUID;
+  attempted_email: string;
+  google_name: string | null;
+  status: "pending" | "resolved" | "dismissed";
+  resolved_by: UUID | null;
+  resolved_at: string | null;
   created_at: string;
 }

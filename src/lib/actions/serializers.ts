@@ -18,6 +18,7 @@ import type {
   Staff,
   StaffAssessment,
   TrainingRecord,
+  AccessRequest,
 } from "@/lib/types";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -30,6 +31,7 @@ type DbDepartment = Omit<Department, "department_type" | "created_at" | "childre
 };
 type DbStaff = Omit<
   Staff,
+  | "login_identifier_type"
   | "created_at"
   | "invited_at"
   | "password_changed_at"
@@ -41,6 +43,7 @@ type DbStaff = Omit<
   | "payroll_summaries"
   | "notifications"
 > & {
+  login_identifier_type: string;
   created_at: Dateish;
   invited_at: Dateish;
   password_changed_at: Dateish;
@@ -237,6 +240,7 @@ export function serializeDepartment(department: DbDepartment): Department {
 export function serializeStaff(staff: DbStaff): Staff {
   return {
     ...staff,
+    login_identifier_type: (staff.login_identifier_type as Staff["login_identifier_type"]) || "email",
     created_at: dateTime(staff.created_at) ?? "",
     invited_at: dateTime(staff.invited_at),
     password_changed_at: dateTime(staff.password_changed_at),
@@ -429,5 +433,20 @@ export function serializeNotification(notification: DbNotification): Notificatio
     type: notification.type as Notification["type"],
     read_at: dateTime(notification.read_at),
     created_at: dateTime(notification.created_at) ?? "",
+  };
+}
+
+type DbAccessRequest = Omit<AccessRequest, "status" | "created_at" | "resolved_at"> & {
+  status: string;
+  created_at: Dateish;
+  resolved_at: Dateish;
+};
+
+export function serializeAccessRequest(req: DbAccessRequest): AccessRequest {
+  return {
+    ...req,
+    status: req.status as AccessRequest["status"],
+    created_at: dateTime(req.created_at) ?? "",
+    resolved_at: dateTime(req.resolved_at),
   };
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import type { User } from "@supabase/supabase-js";
 
 export type UserRoleName =
   | "admin"
@@ -31,7 +32,7 @@ export type SessionUser = {
 };
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  let authUser: { id: string; email?: string | null } | null = null;
+  let authUser: User | null = null;
 
   try {
     const supabase = await createClient();
@@ -45,14 +46,27 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   if (!authUser) return null;
 
+  let canonicalUserId = authUser.id;
+  if (authUser.app_metadata?.merged_into) {
+    canonicalUserId = authUser.app_metadata.merged_into as string;
+  } else if (authUser.email) {
+    const staffByEmail = await prisma.staff.findFirst({
+      where: { email: authUser.email, is_active: true },
+      select: { user_id: true },
+    });
+    if (staffByEmail?.user_id) {
+      canonicalUserId = staffByEmail.user_id;
+    }
+  }
+
   const [userRole, staffRecord] = await Promise.all([
     prisma.userRole.findFirst({
-      where: { user_id: authUser.id },
+      where: { user_id: canonicalUserId },
       include: { department: true },
       orderBy: { id: "asc" },
     }),
     prisma.staff.findFirst({
-      where: { user_id: authUser.id },
+      where: { user_id: canonicalUserId },
       include: { department: true },
     }),
   ]);
@@ -60,7 +74,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const departmentId = userRole?.department_id ?? staffRecord?.department_id ?? null;
 
   return {
-    id: authUser.id,
+    id: canonicalUserId,
     email: authUser.email ?? "",
     role: (userRole?.role ?? "staff") as UserRoleName,
     staffRecord: staffRecord

@@ -3,16 +3,34 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDepartments } from "@/lib/actions/departments";
 import { getShiftConfigurations } from "@/lib/actions/rosters";
+import { getAccessRequests } from "@/lib/actions/accessRequests";
+import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { AccessRequestsCard } from "@/components/dashboard/AccessRequestsCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [departments, shiftConfigurations] = await Promise.all([getDepartments(), getShiftConfigurations()]);
+  const [departments, shiftConfigurations, pendingRequests, user] = await Promise.all([
+    getDepartments(),
+    getShiftConfigurations(),
+    getAccessRequests("pending"),
+    getSessionUser(),
+  ]);
+
+  const resolvedByUserId = user?.staffRecord?.id ?? "";
 
   return (
     <div>
       <PageHeader title="Settings" description="Hospital profile, shifts, holidays, users, and role assignment." />
       <div className="grid gap-5 p-5 xl:grid-cols-2">
+        {pendingRequests.length > 0 && (
+          <div className="xl:col-span-2">
+            <AccessRequestsCard
+              initialRequests={pendingRequests}
+              resolvedByUserId={resolvedByUserId}
+            />
+          </div>
+        )}
         <Card>
           <CardHeader>
             <CardTitle>Hospital Profile</CardTitle>
