@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { markStaffFirstLogin } from "@/lib/actions/staff";
 import { serializeLoginSession } from "@/lib/actions/serializers";
 
 export async function createLoginSession(data: { user_id: string; staff_id?: string | null }) {
@@ -16,6 +17,7 @@ export async function createLoginSession(data: { user_id: string; staff_id?: str
         device: headerStore.get("user-agent"),
       },
     });
+    await markStaffFirstLogin(data.user_id);
     return serializeLoginSession(session);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to create login session" };

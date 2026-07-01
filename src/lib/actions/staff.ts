@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/actions/audit";
 import { prisma } from "@/lib/prisma";
@@ -32,6 +33,50 @@ const provisionableRoles = new Set<UserRoleName>([
 
 function canManageStaff(role: UserRoleName) {
   return role === "admin" || role === "hr_officer";
+}
+
+function generateSecurePassword() {
+  return randomBytes(24).toString("base64url");
+}
+
+export async function markStaffFirstLogin(userId: string) {
+  const now = new Date();
+  await prisma.staff.updateMany({
+    where: { user_id: userId, has_logged_in: false },
+    data: { has_logged_in: true, first_login_at: now },
+  });
+}
+
+export async function getStaffPasswordLoginPolicy(identifier: string, isEmail: boolean) {
+  try {
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      return { allowed: false, error: "Enter your email or phone number." };
+    }
+
+    const staff = await prisma.staff.findFirst({
+      where: {
+        is_active: true,
+        ...(isEmail ? { email: trimmed } : { phone: trimmed }),
+      },
+      select: { allow_staff_id_login: true },
+    });
+
+    if (!staff) {
+      return { allowed: true };
+    }
+
+    if (!staff.allow_staff_id_login) {
+      return {
+        allowed: false,
+        error: "Password sign-in is disabled for this account. Use Google sign-in or contact HR.",
+      };
+    }
+
+    return { allowed: true };
+  } catch {
+    return { allowed: true };
+  }
 }
 
 export async function getStaff(departmentId?: string) {
@@ -68,7 +113,12 @@ export async function getStaffById(id: string) {
   }
 }
 
-export async function createStaff(data: StaffInput & { login_identifier_type?: "email" | "phone" }) {
+export async function createStaff(
+  data: StaffInput & {
+    login_identifier_type?: "email" | "phone";
+    allow_staff_id_login?: boolean;
+  },
+) {
   try {
     const actor = await getSessionUser();
     if (!actor) {
@@ -79,11 +129,13 @@ export async function createStaff(data: StaffInput & { login_identifier_type?: "
     }
 
     const identifierType = data.login_identifier_type ?? "email";
+    const allowStaffIdLogin = data.allow_staff_id_login ?? true;
     const email = data.email?.trim();
     const phone = data.phone?.trim();
     const staffNumber = data.staff_number.trim();
     const departmentId = data.department_id.trim();
     const role = data.role && provisionableRoles.has(data.role) ? data.role : "staff";
+    const initialPassword = allowStaffIdLogin ? staffNumber : generateSecurePassword();
 
     if (identifierType === "email" && !email) {
       return { error: "Email is required when using email as the login identifier." };
@@ -107,8 +159,8 @@ export async function createStaff(data: StaffInput & { login_identifier_type?: "
     const admin = createAdminClient();
     const createPayload =
       identifierType === "phone"
-        ? { phone: phone!, password: staffNumber, phone_confirm: true }
-        : { email: email!, password: staffNumber, email_confirm: true };
+        ? { phone: phone!, password: initialPassword, phone_confirm: true }
+        : { email: email!, password: initialPassword, email_confirm: true };
 
     const { data: authResult, error: authError } = await admin.auth.admin.createUser({
       ...createPayload,
@@ -139,7 +191,9 @@ export async function createStaff(data: StaffInput & { login_identifier_type?: "
             email: email || undefined,
             staff_number: staffNumber,
             user_id: userId,
-            must_change_password: true,
+            must_change_password: allowStaffIdLogin,
+            allow_staff_id_login: allowStaffIdLogin,
+            has_logged_in: false,
             login_identifier_type: identifierType,
             invited_at: new Date(),
           },
@@ -175,12 +229,78 @@ export async function createStaff(data: StaffInput & { login_identifier_type?: "
         email: email ?? null,
         phone: phone ?? null,
         role,
+        allow_staff_id_login: allowStaffIdLogin,
       },
     });
     revalidatePath("/dashboard/staff");
     return serializeStaff(staff);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to create staff member" };
+  }
+}
+
+export async function updateStaffIdLoginAllowed(staffId: string, enabled: boolean) {
+  try {
+    const actor = await getSessionUser();
+    if (!actor) {
+      return { error: "You must be signed in to change login settings." };
+    }
+    if (!canManageStaff(actor.role)) {
+      return { error: "You do not have permission to change login settings." };
+    }
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+    if (!staff?.user_id) {
+      return { error: "This staff member has no linked login account." };
+    }
+    if (!staff.staff_number) {
+      return { error: "This staff member has no staff number on file." };
+    }
+
+    if (enabled && staff.has_logged_in) {
+      return {
+        error: "Staff ID login cannot be turned on again after this person has signed in at least once.",
+      };
+    }
+
+    if (enabled === staff.allow_staff_id_login) {
+      return { success: true, allow_staff_id_login: staff.allow_staff_id_login };
+    }
+
+    const admin = createAdminClient();
+    const nextPassword = enabled ? staff.staff_number : generateSecurePassword();
+
+    const { error: authError } = await admin.auth.admin.updateUserById(staff.user_id, {
+      password: nextPassword,
+    });
+
+    if (authError) {
+      return { error: authError.message };
+    }
+
+    const updated = await prisma.staff.update({
+      where: { id: staffId },
+      data: {
+        allow_staff_id_login: enabled,
+        must_change_password: enabled,
+        ...(enabled ? { password_changed_at: null } : {}),
+      },
+    });
+
+    await logAudit({
+      userId: actor.id,
+      staffId,
+      action: enabled ? "staff_id_login_enabled" : "staff_id_login_disabled",
+      entityType: "staff",
+      entityId: staffId,
+      newValue: { allow_staff_id_login: enabled },
+    });
+
+    revalidatePath(`/dashboard/staff/${staffId}`);
+    revalidatePath("/dashboard/staff");
+    return { success: true, allow_staff_id_login: updated.allow_staff_id_login };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to update login settings" };
   }
 }
 
@@ -200,6 +320,16 @@ export async function resetStaffPassword(staffId: string) {
     }
     if (!staff.staff_number) {
       return { error: "This staff member has no staff number to use as a temporary password." };
+    }
+    if (!staff.allow_staff_id_login) {
+      return {
+        error: "Staff ID login is disabled for this account. Enable it first or ask the staff member to use Google sign-in.",
+      };
+    }
+    if (staff.has_logged_in) {
+      return {
+        error: "Password cannot be reset to the staff number after this person has signed in at least once.",
+      };
     }
 
     const admin = createAdminClient();

@@ -23,6 +23,7 @@ const staffSchema = z
     email: z.string().optional(),
     role: z.enum(["staff", "doctor", "nurse", "department_head", "hr_officer", "medical_director", "admin"]),
     login_identifier_type: z.enum(["email", "phone"]),
+    allow_staff_id_login: z.boolean(),
   })
   .refine(
     (data) => {
@@ -72,6 +73,7 @@ function StaffFormInner({
       email: "",
       role: "staff",
       login_identifier_type: "email",
+      allow_staff_id_login: true,
     },
   });
 
@@ -88,6 +90,7 @@ function StaffFormInner({
   }, [emailParam, nameParam, form]);
 
   const identifierType = form.watch("login_identifier_type");
+  const allowStaffIdLogin = form.watch("allow_staff_id_login");
 
   return (
     <form
@@ -104,6 +107,7 @@ function StaffFormInner({
           email: values.email || undefined,
           role: values.role,
           login_identifier_type: values.login_identifier_type,
+          allow_staff_id_login: values.allow_staff_id_login,
         });
 
         if ("error" in result) {
@@ -123,13 +127,21 @@ function StaffFormInner({
           email: "",
           role: "staff",
           login_identifier_type: "email",
+          allow_staff_id_login: true,
         });
 
         const activeIdentifier = values.login_identifier_type === "email" ? values.email : values.phone;
-        toast.success(
-          `${result.full_name} added. Login identifier: ${activeIdentifier} - Temporary password: ${values.staff_number}`,
-          { duration: 10000 }
-        );
+        if (values.allow_staff_id_login) {
+          toast.success(
+            `${result.full_name} added. Login: ${activeIdentifier} · Temporary password: ${values.staff_number}`,
+            { duration: 10000 },
+          );
+        } else {
+          toast.success(
+            `${result.full_name} added. Staff ID login is off — they should sign in with Google.`,
+            { duration: 10000 },
+          );
+        }
       })}
     >
       {/* Login Identifier Type Selector */}
@@ -162,6 +174,30 @@ function StaffFormInner({
         <p className="text-xs text-slate-400">
           This determines what the staff member types in to log in. They can still link other methods from their profile later.
         </p>
+      </div>
+
+      <div className="md:col-span-4 space-y-2 rounded-lg border border-slate-200 p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+            checked={allowStaffIdLogin}
+            onChange={(event) => form.setValue("allow_staff_id_login", event.target.checked)}
+          />
+          <span>
+            <span className="block text-sm font-semibold text-slate-700">Allow staff ID as initial password</span>
+            <span className="block text-xs text-slate-500">
+              When off, nobody can sign in with email/phone + staff number. The staff member should use Google
+              sign-in instead. You can change this on their profile until they sign in for the first time.
+            </span>
+          </span>
+        </label>
+        {!allowStaffIdLogin ? (
+          <p className="text-xs font-medium text-amber-700">
+            Staff ID login disabled — a random password is set and password sign-in is blocked until you turn
+            this on (only before their first login).
+          </p>
+        ) : null}
       </div>
 
       <Input aria-label="Full name" placeholder="Full name" {...form.register("full_name")} />

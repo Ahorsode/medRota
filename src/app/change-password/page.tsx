@@ -1,10 +1,12 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Loader2, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { validatePassword } from "@/lib/utils/passwordRules";
 
 export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState("");
@@ -16,25 +18,22 @@ export default function ChangePasswordPage() {
     event.preventDefault();
     setError(null);
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    const validationError = validatePassword(newPassword);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-    if (/^\d+$/.test(newPassword)) {
-      setError("Choose a password that is not only numbers. Your staff number is not secure enough.");
-      return;
-    }
 
     setLoading(true);
-
     const supabase = createClient();
+
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      setError("Session expired. Please log in again.");
+      setError("Your session has expired. Please log in again.");
       setLoading(false);
       return;
     }
@@ -54,7 +53,9 @@ export default function ChangePasswordPage() {
     });
 
     if (!response.ok) {
-      setError("Password updated, but we could not finalize your account. Please contact IT.");
+      setError(
+        "Your password was updated, but we couldn't finish activating your account. Please contact HR or IT.",
+      );
       setLoading(false);
       return;
     }
@@ -63,64 +64,70 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 py-8">
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#1A2B4A]/10">
-            <ShieldCheck className="h-6 w-6 text-[#1A2B4A]" />
+    <main className="flex min-h-screen items-center justify-center bg-[#1A2B4A] p-6">
+      <Card className="w-full max-w-md border-white/10 shadow-2xl">
+        <CardHeader className="items-center text-center">
+          <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-[#A8DADC]/20">
+            <ShieldCheck className="h-7 w-7 text-[#A8DADC]" />
           </div>
-          <h1 className="text-xl font-bold text-[#0F172A]">Set Your Password</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            For your security, set a new password before continuing.
+          <CardTitle className="text-2xl">Set Your Password</CardTitle>
+          <p className="text-sm text-slate-500">
+            For your security, you must set a new password before continuing. This replaces the temporary
+            password you were given.
           </p>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label htmlFor="newPassword" className="text-sm font-semibold text-slate-700">
+                New Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="pl-9"
+                  required
+                  minLength={8}
+                  placeholder="At least 8 characters"
+                />
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block text-sm font-semibold text-slate-700">
-            New Password
-            <span className="relative mt-1 block">
-              <Lock className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input
-                className="pl-9"
-                id="newPassword"
-                minLength={8}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                required
-                type="password"
-                value={newPassword}
-              />
-            </span>
-          </label>
+            <div className="space-y-1">
+              <label htmlFor="confirmPassword" className="text-sm font-semibold text-slate-700">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  className="pl-9"
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>
 
-          <label className="block text-sm font-semibold text-slate-700">
-            Confirm New Password
-            <span className="relative mt-1 block">
-              <Lock className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input
-                className="pl-9"
-                id="confirmPassword"
-                minLength={8}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-                type="password"
-                value={confirmPassword}
-              />
-            </span>
-          </label>
+            {error ? (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                {error}
+              </p>
+            ) : null}
 
-          {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-              {error}
-            </p>
-          ) : null}
-
-          <Button className="w-full" disabled={loading} type="submit" variant="navy">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Set Password and Continue
-          </Button>
-        </form>
-      </div>
+            <Button type="submit" className="w-full bg-[#1A2B4A] hover:bg-[#2E86AB]" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Set Password &amp; Continue
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

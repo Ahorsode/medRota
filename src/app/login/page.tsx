@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createLoginSession } from "@/lib/actions/sessions";
+import { getStaffPasswordLoginPolicy } from "@/lib/actions/staff";
 import { createClient } from "@/lib/supabase/client";
 import { submitAccessRequest } from "@/lib/actions/accessRequests";
 import { toast } from "sonner";
@@ -74,27 +75,21 @@ function LoginForm() {
 
     try {
       const supabase = createClient();
-      let resolvedEmail = email;
+      const isEmailInput = email.includes("@");
 
-      // Handle phone login lookup: if email doesn't look like an email, assume it's a phone number.
-      // Search matching staff record by phone to get their login email.
-      if (email && !email.includes("@")) {
-        const response = await fetch(`/api/auth/lookup-phone?phone=${encodeURIComponent(email)}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data?.email) {
-            resolvedEmail = data.email;
-          }
-        }
+      const policy = await getStaffPasswordLoginPolicy(email, isEmailInput);
+      if (!policy.allowed) {
+        setError(policy.error ?? "Password sign-in is not available for this account.");
+        setLoading(false);
+        return;
       }
 
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: resolvedEmail,
-        password,
-      });
+      const { data, error: authError } = isEmailInput
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signInWithPassword({ phone: email, password });
 
       if (authError) {
-        setError(authError.message || "Invalid email or password.");
+        setError(authError.message || "Invalid email/phone or password.");
         setLoading(false);
         return;
       }
@@ -182,6 +177,9 @@ function LoginForm() {
                 required
               />
             </span>
+            <p className="mt-1 text-xs text-slate-400">
+              Phone numbers should include the country code, e.g. +233241234567
+            </p>
           </label>
           <label className="block text-sm font-semibold text-slate-700">
             Password

@@ -59,6 +59,9 @@ export interface Staff {
   invited_at: string | null;
   password_changed_at: string | null;
   login_identifier_type: "email" | "phone";
+  allow_staff_id_login: boolean;
+  has_logged_in: boolean;
+  first_login_at: string | null;
   department?: Department | null;
   leave_requests?: LeaveRequest[];
   attendance_records?: AttendanceRecord[];

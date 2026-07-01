@@ -79,6 +79,9 @@ model Staff {
   invited_at            DateTime?          @db.Timestamptz(6)
   password_changed_at   DateTime?          @db.Timestamptz(6)
   login_identifier_type String             @default("email")
+  allow_staff_id_login  Boolean            @default(true)
+  has_logged_in         Boolean            @default(false)
+  first_login_at        DateTime?          @db.Timestamptz(6)
   hospital              Hospital?          @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
   department            Department?        @relation(fields: [department_id], references: [id], onDelete: SetNull)
   roster_entries        RosterEntry[]

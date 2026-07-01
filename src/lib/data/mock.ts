@@ -192,6 +192,9 @@ function staffMember(id: string, departmentId: string, fullName: string, rank: s
     invited_at: now,
     password_changed_at: now,
     login_identifier_type: "email",
+    allow_staff_id_login: true,
+    has_logged_in: true,
+    first_login_at: now,
   };
 }
 

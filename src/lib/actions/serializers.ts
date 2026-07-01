@@ -35,6 +35,7 @@ type DbStaff = Omit<
   | "created_at"
   | "invited_at"
   | "password_changed_at"
+  | "first_login_at"
   | "department"
   | "leave_requests"
   | "attendance_records"
@@ -47,6 +48,7 @@ type DbStaff = Omit<
   created_at: Dateish;
   invited_at: Dateish;
   password_changed_at: Dateish;
+  first_login_at: Dateish;
   department?: DbDepartment | null;
   leave_requests?: DbLeaveRequest[];
   attendance_records?: DbAttendanceRecord[];
@@ -244,6 +246,7 @@ export function serializeStaff(staff: DbStaff): Staff {
     created_at: dateTime(staff.created_at) ?? "",
     invited_at: dateTime(staff.invited_at),
     password_changed_at: dateTime(staff.password_changed_at),
+    first_login_at: dateTime(staff.first_login_at),
     department: staff.department ? serializeDepartment(staff.department) : undefined,
     leave_requests: staff.leave_requests?.map(serializeLeaveRequest),
     attendance_records: staff.attendance_records?.map(serializeAttendanceRecord),

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CheckCircle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
+import { StaffIdLoginCard } from "@/components/staff/StaffIdLoginCard";
 import { LeaveStatusBadge } from "@/components/staff/LeaveStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,12 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
 
   if (!person) notFound();
 
+  const canManageStaff = currentUser?.role === "admin" || currentUser?.role === "hr_officer";
+  const canResetPassword =
+    canManageStaff &&
+    person.allow_staff_id_login &&
+    !person.has_logged_in;
+
   return (
     <div>
       <PageHeader
@@ -34,7 +41,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
         description={`${person.position ?? "Staff"} · ${person.department?.name ?? "Unassigned"}`}
         actions={
           <StaffProfileActions
-            canResetPassword={currentUser?.role === "admin" || currentUser?.role === "hr_officer"}
+            canResetPassword={canResetPassword}
             staff={person}
           />
         }
@@ -52,20 +59,27 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
             <Info label="Email" value={person.email ?? ""} />
             <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3">
               <span className="text-slate-500">Account</span>
-              {person.must_change_password ? (
+              {person.has_logged_in ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                  <CheckCircle className="h-3 w-3" />
+                  Has signed in
+                </span>
+              ) : person.must_change_password ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                   <Clock className="h-3 w-3" />
                   Awaiting first login
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                  <CheckCircle className="h-3 w-3" />
-                  Account active
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                  <Clock className="h-3 w-3" />
+                  Not signed in yet
                 </span>
               )}
             </div>
           </CardContent>
         </Card>
+
+        <StaffIdLoginCard staff={person} canManage={canManageStaff} />
 
         <Card>
           <CardHeader>

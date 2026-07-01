@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
       where: { id: staffRecord.id },
       data: {
         user_id: canonicalUserId,
-        must_change_password: false, // Google sign-in is already a secure auth method
+        must_change_password: false,
+        allow_staff_id_login: false,
+        has_logged_in: true,
+        first_login_at: staffRecord.first_login_at ?? new Date(),
       },
     });
   } else if (staffRecord.user_id !== canonicalUserId) {
@@ -54,6 +57,25 @@ export async function GET(request: NextRequest) {
     // Attempt to merge identities.
     const { linkGoogleIdentityToExistingStaffUser } = await import("@/lib/auth/linkIdentity");
     await linkGoogleIdentityToExistingStaffUser(staffRecord.user_id, data.user.id, googleEmail);
+    await prisma.staff.update({
+      where: { id: staffRecord.id },
+      data: {
+        allow_staff_id_login: false,
+        has_logged_in: true,
+        first_login_at: staffRecord.first_login_at ?? new Date(),
+        must_change_password: false,
+      },
+    });
+  } else {
+    await prisma.staff.update({
+      where: { id: staffRecord.id },
+      data: {
+        allow_staff_id_login: false,
+        has_logged_in: true,
+        first_login_at: staffRecord.first_login_at ?? new Date(),
+        must_change_password: false,
+      },
+    });
   }
 
   return NextResponse.redirect(`${origin}/dashboard`);
