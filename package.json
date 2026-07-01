@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:team": "npx tsx scripts/seed-team-users.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
