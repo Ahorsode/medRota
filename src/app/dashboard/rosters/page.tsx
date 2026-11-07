@@ -24,6 +24,9 @@ export default async function RosterOverviewPage() {
   const userDepartmentId = user.departmentId;
   const [allDepartments, rosters, staff] = await Promise.all([getDepartments(), getRosters(departmentFilter), getStaff(departmentFilter)]);
   const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
   async function addRoster(formData: FormData) {
     "use server";
@@ -52,14 +55,14 @@ export default async function RosterOverviewPage() {
                   </option>
                 ))}
               </select>
-              <select name="month" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" defaultValue="6">
+              <select name="month" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" defaultValue={String(currentMonth)}>
                 {monthNames.map((month, index) => (
                   <option key={month} value={index + 1}>
                     {month}
                   </option>
                 ))}
               </select>
-              <Input name="year" type="number" min={2026} defaultValue={2026} />
+              <Input name="year" type="number" min={2024} defaultValue={currentYear} />
               <Button type="submit">
                 <Plus className="h-4 w-4" />
                 Create Roster

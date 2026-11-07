@@ -28,11 +28,11 @@ const items: DashboardNavItem[] = [
   { href: "/dashboard/locum-board", label: "Locum Board", icon: UserCheck },
 ];
 
-export function HODSidebar({ user }: { user: SessionUser }) {
+export function HODSidebar({ user, unreadMessages = 0 }: { user: SessionUser; unreadMessages?: number }) {
   const badge =
     user.role === "medical_director"
       ? "Hospital-wide director view"
       : `Managing: ${user.staffRecord?.department_name ?? "Department"}`;
 
-  return <DashboardSidebar items={items} badge={badge} />;
+  return <DashboardSidebar items={items} badge={badge} counts={{ "/dashboard/messages": unreadMessages }} />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState, Suspense } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, LockKeyhole, Mail, Stethoscope, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,28 +21,24 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const callbackErrors: Record<string, string> = {
+  auth_failed: "Google sign-in failed. Please try again or use your password.",
+  no_email: "Your Google account has no email address attached.",
+  missing_code: "The sign-in link was incomplete. Please try signing in again.",
+};
+
 function LoginForm() {
   const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  const emailParam = searchParams.get("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [unregisteredEmail, setUnregisteredEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    const emailParam = searchParams.get("email");
-
-    if (errorParam === "not_registered" && emailParam) {
-      setUnregisteredEmail(emailParam);
-      setError(null);
-    } else if (errorParam === "auth_failed") {
-      setError("Google sign-in failed. Please try again or use your password.");
-    } else if (errorParam === "no_email") {
-      setError("Your Google account has no email address attached.");
-    }
-  }, [searchParams]);
+  const [error, setError] = useState<string | null>(() => (errorParam ? callbackErrors[errorParam] ?? null : null));
+  const [unregisteredEmail, setUnregisteredEmail] = useState<string | null>(() =>
+    errorParam === "not_registered" && emailParam ? emailParam : null,
+  );
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);

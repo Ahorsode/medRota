@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
 import { z } from "zod";
@@ -89,8 +89,8 @@ function StaffFormInner({
     }
   }, [emailParam, nameParam, form]);
 
-  const identifierType = form.watch("login_identifier_type");
-  const allowStaffIdLogin = form.watch("allow_staff_id_login");
+  const identifierType = useWatch({ control: form.control, name: "login_identifier_type" });
+  const allowStaffIdLogin = useWatch({ control: form.control, name: "allow_staff_id_login" });
 
   return (
     <form

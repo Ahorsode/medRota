@@ -1,7 +1,9 @@
 import { ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
+import { redirect } from "next/navigation";
 import { getAuditLogs } from "@/lib/actions/audit";
+import { getSessionUser, isHRRole } from "@/lib/auth/getSessionUser";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,10 @@ function labelForAction(action: string) {
 }
 
 export default async function AuditPage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!isHRRole(user.role)) redirect("/dashboard");
+
   const logs = await getAuditLogs({ limit: 200 });
 
   return (

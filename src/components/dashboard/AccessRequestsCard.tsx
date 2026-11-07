@@ -159,19 +159,20 @@ export function AccessRequestsCard({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 md:justify-end">
-                <Link
-                  href={`/dashboard/staff?email=${encodeURIComponent(
-                    request.attempted_email
-                  )}&name=${encodeURIComponent(request.google_name || "")}`}
+                <Button
+                  asChild
+                  size="sm"
+                  className="gap-1.5 bg-[#1A2B4A] hover:bg-[#2A3B5A] text-white"
                 >
-                  <Button
-                    size="sm"
-                    className="gap-1.5 bg-[#1A2B4A] hover:bg-[#2A3B5A] text-white"
+                  <Link
+                    href={`/dashboard/staff?email=${encodeURIComponent(
+                      request.attempted_email
+                    )}&name=${encodeURIComponent(request.google_name || "")}`}
                   >
                     <UserPlus className="h-3.5 w-3.5" />
                     Go to Staff → Add Email
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

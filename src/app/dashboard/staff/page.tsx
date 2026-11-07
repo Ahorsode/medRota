@@ -4,15 +4,22 @@ import { StaffTable } from "@/components/staff/StaffTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStaff } from "@/lib/actions/staff";
 import { getDepartments } from "@/lib/actions/departments";
-import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { getSessionUser, isStaffRole } from "@/lib/auth/getSessionUser";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function StaffPage() {
+export default async function StaffPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard/my-profile");
+  if (isStaffRole(user.role)) redirect("/dashboard/my-profile");
+
+  const { q } = await searchParams;
+  const initialQuery = (Array.isArray(q) ? q[0] : q) ?? "";
 
   const isHod = user.role === "department_head";
   const canManageStaff = user.role === "admin" || user.role === "hr_officer";
@@ -36,7 +43,7 @@ export default async function StaffPage() {
         ) : null}
         <Card>
           <CardContent className="p-5">
-            <StaffTable staff={staff} departments={departments} />
+            <StaffTable key={initialQuery} staff={staff} departments={departments} initialQuery={initialQuery} />
           </CardContent>
         </Card>
       </div>

@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { DashboardSidebar, type DashboardNavItem } from "@/components/layout/DashboardSidebar";
+import type { SessionUser } from "@/lib/auth/getSessionUser";
 
 const items: DashboardNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -35,6 +36,6 @@ const items: DashboardNavItem[] = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function HRSidebar() {
-  return <DashboardSidebar items={items} badge="HR operations" />;
+export function HRSidebar({ unreadMessages = 0 }: { user?: SessionUser; unreadMessages?: number }) {
+  return <DashboardSidebar items={items} badge="HR operations" counts={{ "/dashboard/messages": unreadMessages }} />;
 }

@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { closeLoginSession } from "@/lib/actions/sessions";
 import type { SessionUser } from "@/lib/auth/getSessionUser";
+import { isStaffRole } from "@/lib/auth/roles";
 import { useSidebar } from "@/lib/context/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
 export function Header({ user }: { user?: SessionUser }) {
   const router = useRouter();
   const { setMobileOpen } = useSidebar();
+  const canSearchStaff = !!user && !isStaffRole(user.role);
 
   async function handleLogout() {
     try {
@@ -36,10 +38,20 @@ export function Header({ user }: { user?: SessionUser }) {
         <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="relative hidden w-80 md:block">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input className="pl-9" placeholder="Search staff, rosters, departments..." />
-        </div>
+        {canSearchStaff ? (
+          <form
+            role="search"
+            className="relative hidden w-80 md:block"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const query = String(new FormData(event.currentTarget).get("q") ?? "").trim();
+              router.push(query ? `/dashboard/staff?q=${encodeURIComponent(query)}` : "/dashboard/staff");
+            }}
+          >
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input name="q" className="pl-9" placeholder="Search staff by name, number or email..." aria-label="Search staff" />
+          </form>
+        ) : null}
       </div>
       <div className="flex items-center gap-2">
         {user ? (

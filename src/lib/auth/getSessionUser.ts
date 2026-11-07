@@ -2,14 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
 
-export type UserRoleName =
-  | "admin"
-  | "hr_officer"
-  | "department_head"
-  | "doctor"
-  | "nurse"
-  | "medical_director"
-  | "staff";
+import type { UserRoleName } from "@/lib/auth/roles";
+
+export type { UserRoleName } from "@/lib/auth/roles";
+export { isHRRole, isStaffRole } from "@/lib/auth/roles";
 
 export type SessionUser = {
   id: string;

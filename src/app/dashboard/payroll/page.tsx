@@ -1,7 +1,10 @@
 import { DollarSign } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AllowanceRateEditor, GeneratePayrollButton } from "@/components/payroll/PayrollControls";
 import { PayrollTable } from "@/components/payroll/PayrollTable";
 import { getAllowanceRates, getAllStaffPayrollSummary } from "@/lib/actions/payroll";
+import { getSessionUser, isHRRole } from "@/lib/auth/getSessionUser";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +17,16 @@ export default async function PayrollPage({
 }: {
   searchParams: Promise<{ month?: string | string[]; year?: string | string[] }>;
 }) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!isHRRole(user.role)) redirect("/dashboard");
+
   const params = await searchParams;
   const now = new Date();
-  const month = Number(searchValue(params.month) ?? now.getMonth() + 1);
-  const year = Number(searchValue(params.year) ?? now.getFullYear());
+  const requestedMonth = Number(searchValue(params.month));
+  const requestedYear = Number(searchValue(params.year));
+  const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : now.getMonth() + 1;
+  const year = Number.isInteger(requestedYear) && requestedYear >= 2000 ? requestedYear : now.getFullYear();
 
   const [summaries, rates] = await Promise.all([getAllStaffPayrollSummary(year, month), getAllowanceRates()]);
 
@@ -59,7 +68,7 @@ export default async function PayrollPage({
             <input
               name="year"
               type="number"
-              min={2026}
+              min={2024}
               defaultValue={year}
               className="h-10 w-28 rounded-md border border-slate-200 px-3 text-sm"
             />
@@ -67,6 +76,9 @@ export default async function PayrollPage({
           <button type="submit" className="h-10 rounded-md bg-[#1A2B4A] px-4 text-sm font-semibold text-white">
             Apply
           </button>
+          <div className="ml-auto">
+            <GeneratePayrollButton month={month} year={year} hasSummaries={summaries.length > 0} />
+          </div>
         </form>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -78,16 +90,7 @@ export default async function PayrollPage({
 
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700">Current Allowance Rates</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {rates.map((rate) => (
-              <span key={rate.id} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm">
-                <span className="font-mono font-bold text-[#1A2B4A]">{rate.shift_code}</span>
-                <span className="ml-2 text-slate-600">GHS {rate.rate_ghs.toFixed(2)}</span>
-                {rate.description ? <span className="ml-1 text-slate-400">· {rate.description}</span> : null}
-              </span>
-            ))}
-            {rates.length === 0 ? <span className="text-sm text-slate-400">No active rates configured.</span> : null}
-          </div>
+          <AllowanceRateEditor rates={rates} />
         </div>
 
         <PayrollTable summaries={summaries} month={month} year={year} />
