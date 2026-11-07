@@ -19,10 +19,12 @@ export function DashboardSidebar({
   items,
   subtitle = "SDA Hospital, Koforidua",
   badge,
+  counts,
 }: {
   items: DashboardNavItem[];
   subtitle?: string;
   badge?: string;
+  counts?: Record<string, number>;
 }) {
   const pathname = usePathname();
   const { mobileOpen, setMobileOpen, collapsed, setCollapsed } = useSidebar();
@@ -86,6 +88,7 @@ export function DashboardSidebar({
             {items.map((item) => {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
+              const count = counts?.[item.href] ?? 0;
               const navItem = (
                 <Link
                   href={item.href}
@@ -96,8 +99,21 @@ export function DashboardSidebar({
                     !expanded && "lg:justify-center lg:px-0",
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="relative shrink-0">
+                    <Icon className="h-4 w-4" />
+                    {count > 0 && !expanded ? (
+                      <span className="absolute -right-1.5 -top-1.5 hidden h-2.5 w-2.5 rounded-full bg-rose-500 lg:block" aria-hidden />
+                    ) : null}
+                  </span>
                   <span className={cn("truncate", !expanded && "lg:hidden")}>{item.label}</span>
+                  {count > 0 ? (
+                    <span
+                      className={cn("ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white", !expanded && "lg:hidden")}
+                      aria-label={`${count} unread`}
+                    >
+                      {count > 99 ? "99+" : count}
+                    </span>
+                  ) : null}
                 </Link>
               );
 

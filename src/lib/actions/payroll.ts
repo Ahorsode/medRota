@@ -3,8 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { serializeAllowanceRate, serializePayrollSummary } from "@/lib/actions/serializers";
 import { getRosterEntries, getRosterEntriesForStaff } from "@/lib/actions/rosters";
+import { getSessionUser, isHRRole } from "@/lib/auth/getSessionUser";
 import { prisma } from "@/lib/prisma";
 import type { ShiftAllowanceSummary } from "@/lib/types";
+
+async function requireHR() {
+  const user = await getSessionUser();
+  if (!user || !isHRRole(user.role)) {
+    throw new Error("Only HR officers and administrators can manage payroll.");
+  }
+  return user;
+}
 
 const FALLBACK_ALLOWANCES = {
   N: 50,
@@ -72,6 +81,10 @@ export async function getAllowanceRates(hospitalId?: string) {
 
 export async function updateAllowanceRate(id: string, rateGhs: number) {
   try {
+    await requireHR();
+    if (!Number.isFinite(rateGhs) || rateGhs < 0) {
+      return { error: "Rate must be a positive amount." };
+    }
     const rate = await prisma.allowanceRate.update({
       where: { id },
       data: { rate_ghs: rateGhs },
@@ -85,7 +98,19 @@ export async function updateAllowanceRate(id: string, rateGhs: number) {
   }
 }
 
-export async function generatePayrollSummary(staffId: string, year: number, month: number, hospitalId: string) {
+export async function generatePayrollSummary(staffId: string, year: number, month: number, hospitalId?: string | null) {
+  try {
+    await requireHR();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Not authorised" };
+  }
+  const result = await buildPayrollSummary(staffId, year, month, hospitalId);
+  revalidatePath("/dashboard/payroll");
+  revalidatePath("/dashboard/reports");
+  return result;
+}
+
+async function buildPayrollSummary(staffId: string, year: number, month: number, hospitalId?: string | null) {
   try {
     const { monthStart, monthEnd } = monthBounds(year, month);
 
@@ -105,7 +130,7 @@ export async function generatePayrollSummary(staffId: string, year: number, mont
       }),
       prisma.allowanceRate.findMany({
         where: {
-          hospital_id: hospitalId,
+          ...(hospitalId ? { hospital_id: hospitalId } : {}),
           is_active: true,
           effective_from: { lte: monthEnd },
         },
@@ -192,11 +217,33 @@ export async function generatePayrollSummary(staffId: string, year: number, mont
       include: { staff: { include: { department: true } } },
     });
 
-    revalidatePath("/dashboard/payroll");
-    revalidatePath("/dashboard/reports");
     return serializePayrollSummary(summary);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to generate payroll summary" };
+  }
+}
+
+export async function generateAllPayrollSummaries(year: number, month: number) {
+  try {
+    await requireHR();
+    const staff = await prisma.staff.findMany({
+      where: { is_active: true },
+      select: { id: true, hospital_id: true, department: { select: { hospital_id: true } } },
+    });
+
+    let generated = 0;
+    const failures: string[] = [];
+    for (const person of staff) {
+      const result = await buildPayrollSummary(person.id, year, month, person.hospital_id ?? person.department?.hospital_id);
+      if ("error" in result) failures.push(person.id);
+      else generated += 1;
+    }
+
+    revalidatePath("/dashboard/payroll");
+    revalidatePath("/dashboard/reports");
+    return { generated, failed: failures.length };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to generate payroll summaries" };
   }
 }
 

@@ -4,20 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDepartments } from "@/lib/actions/departments";
 import { getShiftConfigurations } from "@/lib/actions/rosters";
 import { getAccessRequests } from "@/lib/actions/accessRequests";
-import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { getSessionUser, isHRRole } from "@/lib/auth/getSessionUser";
+import { ghanaPublicHolidays } from "@/lib/utils/dates";
+import { redirect } from "next/navigation";
 import { AccessRequestsCard } from "@/components/dashboard/AccessRequestsCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [departments, shiftConfigurations, pendingRequests, user] = await Promise.all([
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!isHRRole(user.role)) redirect("/dashboard");
+
+  const [departments, shiftConfigurations, pendingRequests] = await Promise.all([
     getDepartments(),
     getShiftConfigurations(),
     getAccessRequests("pending"),
-    getSessionUser(),
   ]);
 
-  const resolvedByUserId = user?.staffRecord?.id ?? "";
+  const resolvedByUserId = user.staffRecord?.id ?? "";
+  const holidayYear = new Date().getFullYear();
+  const holidays = ghanaPublicHolidays(holidayYear);
 
   return (
     <div>
@@ -48,12 +55,12 @@ export default async function SettingsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Ghana Public Holidays</CardTitle>
+            <CardTitle>Ghana Public Holidays {holidayYear}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            {["New Year's Day", "Constitution Day", "Independence Day", "May Day", "Founders' Day", "Christmas"].map((holiday) => (
-              <Badge key={holiday} variant="warning">
-                {holiday}
+            {holidays.map((holiday) => (
+              <Badge key={holiday.name} variant="warning">
+                {holiday.name} · {holiday.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
               </Badge>
             ))}
           </CardContent>

@@ -18,13 +18,14 @@ export default async function MessagesPage() {
   const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
   const [staff, allDepartments] = await Promise.all([getStaff(departmentFilter), getDepartments()]);
   const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
-  const currentStaff = user.staffRecord ? staff.find((person) => person.id === user.staffRecord?.id) ?? null : staff[0] ?? null;
+  // Only ever act as the signed-in user's own staff record — never fall back to someone else's inbox.
+  const currentStaff = user.staffRecord ? { id: user.staffRecord.id, full_name: user.staffRecord.full_name } : null;
+  const senderId = currentStaff?.id ?? null;
   const messages = currentStaff ? await getMessages(currentStaff.id) : [];
 
   async function compose(formData: FormData) {
     "use server";
 
-    const senderId = String(formData.get("sender_id") ?? "");
     const recipientIds = formData.getAll("recipient_ids").map(String).filter(Boolean);
     const departmentId = String(formData.get("department_id") ?? "");
     const body = String(formData.get("body") ?? "");
@@ -51,9 +52,13 @@ export default async function MessagesPage() {
           </CardHeader>
           <CardContent>
             <form action={compose} className="grid gap-3">
-              <input type="hidden" name="sender_id" value={currentStaff?.id ?? ""} />
+              {!currentStaff ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Your account is not linked to a staff record, so you can&apos;t send or receive messages yet.
+                </p>
+              ) : null}
               <select name="recipient_ids" multiple className="min-h-32 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
-                {staff.map((person) => (
+                {staff.filter((person) => person.id !== senderId).map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.full_name}
                   </option>

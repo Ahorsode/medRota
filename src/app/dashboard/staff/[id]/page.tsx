@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CheckCircle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffProfileActions } from "@/components/staff/StaffProfileActions";
@@ -12,7 +12,7 @@ import { createAssessment, getAssessments } from "@/lib/actions/assessments";
 import { getLeaveRequests } from "@/lib/actions/leave";
 import { getStaffById } from "@/lib/actions/staff";
 import { createTrainingRecord, getTrainingRecords } from "@/lib/actions/training";
-import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { getSessionUser, isStaffRole } from "@/lib/auth/getSessionUser";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,10 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
     getTrainingRecords(id),
   ]);
 
+  if (!currentUser) redirect("/login");
+  if (isStaffRole(currentUser.role)) redirect("/dashboard/my-profile");
   if (!person) notFound();
+  if (currentUser.role === "department_head" && person.department_id !== currentUser.departmentId) notFound();
 
   const canManageStaff = currentUser?.role === "admin" || currentUser?.role === "hr_officer";
   const canResetPassword =

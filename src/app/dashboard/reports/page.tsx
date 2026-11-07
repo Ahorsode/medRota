@@ -1,5 +1,5 @@
-import { Download, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ReportsActions } from "@/components/reports/ReportsActions";
 import { ReportsCharts } from "@/components/reports/ReportsCharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,8 @@ import { getLeaveRequests } from "@/lib/actions/leave";
 import { getRosterEntries } from "@/lib/actions/rosters";
 import { getStaff } from "@/lib/actions/staff";
 import { getShiftAllowanceSummaryForDepartment } from "@/lib/actions/payroll";
-import { getSessionUser } from "@/lib/auth/getSessionUser";
+import { getSessionUser, isStaffRole } from "@/lib/auth/getSessionUser";
+import { monthNames } from "@/lib/utils/dates";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -23,20 +24,35 @@ const leaveColors: Record<string, string> = {
   Emergency: "#D97706",
 };
 
-export default async function ReportsPage() {
+function searchValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string | string[]; year?: string | string[] }>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "doctor" || user.role === "nurse" || user.role === "staff") redirect("/dashboard");
+  if (isStaffRole(user.role)) redirect("/dashboard");
 
-  const startDate = "2026-06-01";
-  const endDate = "2026-06-30";
+  const params = await searchParams;
+  const now = new Date();
+  const requestedMonth = Number(searchValue(params.month));
+  const requestedYear = Number(searchValue(params.year));
+  const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : now.getMonth() + 1;
+  const year = Number.isInteger(requestedYear) && requestedYear >= 2000 ? requestedYear : now.getFullYear();
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endDate = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  const periodLabel = `${monthNames[month - 1]} ${year}`;
   const departmentFilter = user.role === "department_head" ? user.departmentId ?? undefined : undefined;
   const [allDepartments, staff, rosterEntries, leaveRequests, allowance] = await Promise.all([
     getDepartments(),
     getStaff(departmentFilter),
     getRosterEntries(startDate, endDate, departmentFilter),
     getLeaveRequests(undefined, departmentFilter),
-    getShiftAllowanceSummaryForDepartment(departmentFilter, 2026, 6),
+    getShiftAllowanceSummaryForDepartment(departmentFilter, year, month),
   ]);
   const departments = departmentFilter ? allDepartments.filter((department) => department.id === departmentFilter) : allDepartments;
 
@@ -76,26 +92,37 @@ export default async function ReportsPage() {
         title="Reports & Analytics"
         description="Staffing, absenteeism, overtime, leave, fairness, and coverage reports."
         actions={
-          <>
-            <Button variant="outline">
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-            <Button>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          </>
+          <ReportsActions
+            periodLabel={periodLabel}
+            fileSuffix={`${String(month).padStart(2, "0")}_${year}`}
+            staffing={staffing}
+            leave={leave}
+            nightFairness={nightFairness}
+          />
         }
       />
       <div className="space-y-5 p-5">
         <Card>
           <CardContent className="grid gap-3 p-5 md:grid-cols-4">
-            <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{startDate}</div>
-            <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{endDate}</div>
+            <form className="flex flex-wrap items-center gap-2 md:col-span-2">
+              <select name="month" defaultValue={month} aria-label="Month" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm">
+                {monthNames.map((name, index) => (
+                  <option key={name} value={index + 1}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <input name="year" type="number" min={2024} defaultValue={year} aria-label="Year" className="h-10 w-24 rounded-md border border-slate-200 px-3 text-sm" />
+              <Button type="submit" variant="outline">
+                Apply
+              </Button>
+              <span className="text-xs text-slate-500">
+                {startDate} to {endDate}
+              </span>
+            </form>
             <div className="rounded-md border border-slate-200 px-3 py-2 text-sm">{departmentFilter ? departments[0]?.name ?? "Department" : "All departments"}</div>
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-              Payroll allowance export: GHS {allowance.total}
+              Shift allowance ({periodLabel}): GHS {allowance.total.toFixed(2)}
             </div>
           </CardContent>
         </Card>

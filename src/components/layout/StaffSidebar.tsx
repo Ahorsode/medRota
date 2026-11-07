@@ -23,11 +23,11 @@ const items: DashboardNavItem[] = [
   { href: "/dashboard/my-profile", label: "My Profile", icon: UserCircle },
 ];
 
-export function StaffSidebar({ user }: { user: SessionUser }) {
+export function StaffSidebar({ user, unreadMessages = 0 }: { user: SessionUser; unreadMessages?: number }) {
   const navItems =
     user.staffRecord?.employment_type === "Locum"
       ? [...items, { href: "/dashboard/locum-board", label: "Locum Board", icon: BriefcaseMedical }]
       : items;
 
-  return <DashboardSidebar items={navItems} badge={user.staffRecord?.department_name ?? "Staff portal"} />;
+  return <DashboardSidebar items={navItems} badge={user.staffRecord?.department_name ?? "Staff portal"} counts={{ "/dashboard/messages": unreadMessages }} />;
 }

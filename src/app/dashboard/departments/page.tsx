@@ -8,10 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createDepartment, getDepartments } from "@/lib/actions/departments";
 import { getRosters } from "@/lib/actions/rosters";
 import { getStaff } from "@/lib/actions/staff";
+import { getSessionUser, isHRRole } from "@/lib/auth/getSessionUser";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function DepartmentsPage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!isHRRole(user.role)) redirect("/dashboard");
+
   const [departments, rosters, staff] = await Promise.all([getDepartments(), getRosters(), getStaff()]);
   const locumStaff = staff.filter((person) => person.employment_type === "Locum");
   const hospitalId = departments.find((department) => department.hospital_id)?.hospital_id ?? "";
@@ -83,7 +89,11 @@ export default async function DepartmentsPage() {
                     {roster ? <RosterStatusBadge status={roster.status} /> : <Badge>No roster</Badge>}
                   </div>
                   <Button asChild className="mt-4" size="sm" variant="outline">
-                    <Link href={`/dashboard/rosters/${department.id}/2026/6`}>Open Roster</Link>
+                    {roster ? (
+                      <Link href={`/dashboard/rosters/${department.id}/${roster.year}/${roster.month}`}>Open Roster</Link>
+                    ) : (
+                      <Link href="/dashboard/rosters">Create Roster</Link>
+                    )}
                   </Button>
                 </CardContent>
               </Card>

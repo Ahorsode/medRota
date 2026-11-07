@@ -24,7 +24,7 @@ export async function getMessages(staffId: string) {
 
 export async function getUnreadCount(staffId: string) {
   try {
-    return prisma.messageRecipient.count({
+    return await prisma.messageRecipient.count({
       where: { staff_id: staffId, is_read: false },
     });
   } catch {
